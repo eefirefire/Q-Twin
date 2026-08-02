@@ -33,3 +33,15 @@ Sent ahead of Week 2. These are the "DRAFT — needs Eva's review" flags from
    inferred from the crowding model, not yet checked against
    `chip_summary.csv`'s `binding_rate_probe_dfdt_30s` column broken out by
    concentration. Worth a quick look before it goes in the proposal.
+
+7. **Biomarker false positive on a real NC chip:** chip 21Mar_No.29 (a true
+   negative control — no target present) has the *second-fastest* early
+   binding rate in the entire 45-chip dataset (-0.071 Hz/s), yet its full-run
+   probe Δf lands near zero (+0.08 Hz, correctly FAILURE). Looking at the raw
+   points, this is driven almost entirely by replicate 1 declining smoothly
+   for the first 30s while replicate 2 is flat/noisy with a mid-window step
+   artifact — likely sensor noise on a single replicate, not real chemistry.
+   This means the 30s binding-rate biomarker can look "success-like" on a
+   genuine NC if only one replicate is checked. Eva/the teacher should weigh
+   in on whether Week 2's models should require agreement across replicates
+   (not just an averaged rate) before trusting the biomarker alone.

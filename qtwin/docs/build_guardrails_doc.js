@@ -108,6 +108,8 @@ const doc = new Document({
       p("FAILURE chips: mean binding rate ≈ +0.0187 Hz/s (std 0.030) — flat or drifting upward from the start, consistent with no early binding."),
       p("Across concentrations: expect the magnitude of the early binding rate to increase with concentration up to the ~10 µM crowding onset (more target/probe available to bind faster), then plateau or shrink above that as surface crowding slows the initial adsorption kinetics too, not just the final Δf."),
       draftFlag("the concentration-dependence claim in the last sentence is a hypothesis based on the crowding model in Section 2, not yet directly verified against this dataset's biomarker column (qtwin/data/chip_summary.csv, binding_rate_probe_dfdt_30s) broken out by concentration group — worth a quick check before this goes in the proposal."),
+      p("Known limitation: chip 21Mar_No.29, a true negative control, has the second-fastest early binding rate in the whole dataset (-0.071 Hz/s) despite a near-zero full-run Δf (correctly FAILURE). This comes from one noisy replicate declining smoothly for 30s while the other replicate is flat with a step artifact — i.e. a single-replicate false positive on the early-window biomarker alone."),
+      draftFlag("should Week 2's models require agreement across replicates before trusting the 30s biomarker, rather than the simple per-chip average used here? See clarifying_questions.md item 7."),
 
       h1("Sources"),
       bullet("Computed values: qtwin/data/chip_summary.csv (45 chips, all 4 sessions)."),
