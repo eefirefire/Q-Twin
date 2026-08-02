@@ -190,20 +190,56 @@ def binding_rate(group: pd.DataFrame) -> float | None:
 def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
     clean = master[~master["is_error_file"]].copy()
 
-    def delta_f(group: pd.DataFrame) -> float:
-        g = group.sort_values("Relative_time")
-        return g["Resonance_Frequency"].iloc[-1] - g["Resonance_Frequency"].iloc[0]
+    def endpoint(group: pd.DataFrame) -> float:
+        return group.sort_values("Relative_time")["Resonance_Frequency"].iloc[-1]
 
-    # delta-f per (chip, stage, replicate), then averaged across replicates
-    per_rep = (
+    def startpoint(group: pd.DataFrame) -> float:
+        return group.sort_values("Relative_time")["Resonance_Frequency"].iloc[0]
+
+    # Endpoint (and, for CHI only, startpoint) frequency per (chip, stage, replicate),
+    # then averaged across replicates. Matches the lab's own "All results_PCA3.xlsx"
+    # methodology: Delta-f for a stage is that stage's endpoint frequency MINUS the
+    # PRIOR stage's endpoint frequency (cross-stage), not the stage's own internal
+    # drift. Verified against Mean&SE sheet: this reproduces -62.96 Hz at 10 uM RT
+    # (see clarifying_questions.md item 2 — this was a bug in the original ingestion,
+    # now fixed).
+    end_per_rep = (
         clean.groupby(["chip_id", "stage", "replicate"])
-        .apply(delta_f, include_groups=False)
-        .reset_index(name="delta_f")
+        .apply(endpoint, include_groups=False)
+        .reset_index(name="end_f")
     )
-    per_stage = per_rep.groupby(["chip_id", "stage"])["delta_f"].mean().reset_index()
+    end_per_stage = end_per_rep.groupby(["chip_id", "stage"])["end_f"].mean().reset_index()
+    end_pivot = end_per_stage.pivot(index="chip_id", columns="stage", values="end_f")
 
-    pivot = per_stage.pivot(index="chip_id", columns="stage", values="delta_f")
-    pivot.columns = [f"delta_f_{c.lower()}" for c in pivot.columns]
+    start_per_rep = (
+        clean[clean["stage"] == "CHI"]
+        .groupby(["chip_id", "replicate"])
+        .apply(startpoint, include_groups=False)
+        .reset_index(name="start_f")
+    )
+    start_per_chip = start_per_rep.groupby("chip_id")["start_f"].mean()
+
+    # Some 21 Mar chips (No.7/8/9/10) have no separate CHI file -- probe was added
+    # directly to an already-chitosan-coated chip with no logged chi step. For those,
+    # fall back to the probe curve's own start point as the pre-probe baseline (that
+    # start point IS the post-chi baseline reading, just not saved as its own file).
+    probe_start_per_rep = (
+        clean[clean["stage"] == "probe"]
+        .groupby(["chip_id", "replicate"])
+        .apply(startpoint, include_groups=False)
+        .reset_index(name="start_f")
+    )
+    probe_start_per_chip = probe_start_per_rep.groupby("chip_id")["start_f"].mean()
+
+    pivot = pd.DataFrame(index=end_pivot.index)
+    if "CHI" in end_pivot.columns:
+        pivot["delta_f_chi"] = end_pivot["CHI"] - start_per_chip.reindex(end_pivot.index)
+    if "probe" in end_pivot.columns:
+        chi_baseline = end_pivot["CHI"] if "CHI" in end_pivot.columns else pd.Series(index=end_pivot.index, dtype=float)
+        baseline = chi_baseline.fillna(probe_start_per_chip.reindex(end_pivot.index))
+        pivot["delta_f_probe"] = end_pivot["probe"] - baseline
+    if "target" in end_pivot.columns and "probe" in end_pivot.columns:
+        pivot["delta_f_target"] = end_pivot["target"] - end_pivot["probe"]
     pivot = pivot.reset_index()
 
     meta = (
