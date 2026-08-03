@@ -179,12 +179,25 @@ def build_timeseries_master(records):
 
 def binding_rate(group: pd.DataFrame) -> float | None:
     """Slope of Resonance_Frequency vs Relative_time over the first BIOMARKER_WINDOW_S
-    seconds (linear least-squares fit), i.e. dDf/dt in Hz/s."""
+    seconds (linear least-squares fit), i.e. dDf/dt in Hz/s.
+
+    Superseded as a predictive feature -- see early_displacement() below and
+    clarifying_questions.md item 8. Kept in chip_summary.csv for reference /
+    comparison, not because it's a good feature."""
     g = group[group["Relative_time"] <= BIOMARKER_WINDOW_S].sort_values("Relative_time")
     if len(g) < 3:
         return None
     slope, _intercept = np.polyfit(g["Relative_time"], g["Resonance_Frequency"], 1)
     return slope
+
+
+def value_at_time(group: pd.DataFrame, t: float) -> float | None:
+    """Linearly-interpolated Resonance_Frequency at Relative_time == t. None if the
+    curve doesn't reach t."""
+    g = group.sort_values("Relative_time")
+    if len(g) < 2 or g["Relative_time"].max() < t:
+        return None
+    return float(np.interp(t, g["Relative_time"], g["Resonance_Frequency"]))
 
 
 def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
@@ -267,8 +280,34 @@ def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
         columns={"binding_rate_dfdt": f"binding_rate_probe_dfdt_{int(BIOMARKER_WINDOW_S)}s"}
     )
 
+    # Redefined kinetic biomarker (validated -- see clarifying_questions.md item 8):
+    # early DISPLACEMENT at BIOMARKER_WINDOW_S, i.e. the probe curve's own value at
+    # t=30s minus the CHI-stage baseline (same baseline as delta_f_probe, including
+    # the No.7/8/9/10 probe-start fallback for chips with no logged CHI file). This
+    # replaces binding_rate_probe_dfdt_30s (a same-stage slope, confirmed NOT
+    # predictive of the corrected SUCCESS/FAILURE label) with a metric that tracks
+    # delta_f_probe almost exactly (corr 0.9997) but 30s into the run instead of at
+    # the end -- i.e. an early read of the same signal, not a different one.
+    disp_per_rep = (
+        probe_rows.groupby(["chip_id", "replicate"])
+        .apply(lambda g: value_at_time(g, BIOMARKER_WINDOW_S), include_groups=False)
+        .reset_index(name="probe_at_window")
+    )
+    probe_at_window_per_chip = disp_per_rep.groupby("chip_id")["probe_at_window"].mean()
+
+    displacement = pd.DataFrame(index=end_pivot.index)
+    if "CHI" in end_pivot.columns:
+        chi_baseline_disp = end_pivot["CHI"].fillna(probe_start_per_chip.reindex(end_pivot.index))
+    else:
+        chi_baseline_disp = probe_start_per_chip.reindex(end_pivot.index)
+    displacement[f"early_displacement_{int(BIOMARKER_WINDOW_S)}s"] = (
+        probe_at_window_per_chip.reindex(end_pivot.index) - chi_baseline_disp
+    )
+    displacement = displacement.reset_index()
+
     summary = meta.merge(pivot, on="chip_id", how="left")
     summary = summary.merge(rate_per_chip, on="chip_id", how="left")
+    summary = summary.merge(displacement, on="chip_id", how="left")
 
     if "delta_f_probe" in summary.columns:
         summary["success_or_fail"] = summary["delta_f_probe"].apply(
@@ -276,6 +315,12 @@ def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
         )
     else:
         summary["success_or_fail"] = "FAILURE"
+
+    # 15Mar_No.16: lab-flagged bad measurement, not a real chip outcome -- CHI-to-probe
+    # jump is ~20,600 Hz (see clarifying_questions.md item "EXCLUDED"), confirmed against
+    # the raw curve and consistent with this chip being absent from the lab's own
+    # "Success rate" sheet in All results_PCA3.xlsx. Excluded, not scored as FAILURE.
+    summary.loc[summary["chip_id"] == "15Mar_No.16", "success_or_fail"] = "EXCLUDED"
 
     return summary.sort_values("chip_id").reset_index(drop=True)
 

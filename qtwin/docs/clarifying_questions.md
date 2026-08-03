@@ -61,18 +61,44 @@ item 8, which is now the most important open question in this list.**
    one specific case of the broader problem in item 8, rather than an
    isolated edge case.
 
-8. **NEW, most important: the kinetic biomarker doesn't predict the
-   corrected outcome.** The original "SUCCESS ≈ -0.0149 Hz/s vs FAILURE ≈
-   +0.0187 Hz/s" claim in Section 5(c) was measured against SUCCESS/FAILURE
-   labels from the *buggy* Δf — which was itself a same-stage slope, so it's
-   not surprising it correlated with another same-stage slope (the
-   biomarker). Against the corrected, lab-formula-matching Δf: SUCCESS chips
-   average +0.0061 Hz/s, FAILURE chips average -0.0024 Hz/s (backwards from
-   the original hypothesis, heavily overlapping, correlation -0.16 — down
-   from 0.75 against the old Δf). Before Week 2 trains anything on this
-   biomarker, Eva/the teacher need to decide: redefine it (e.g. as the early
-   slope of probe-relative-to-chi-baseline, matching how Δf itself is now
-   computed, rather than the probe curve's own internal slope), or drop it
-   as a feature until a version that actually correlates with outcome is
-   found. As currently defined, it would likely hurt a trained model more
-   than help.
+8. **RESOLVED — kinetic biomarker redefined as displacement, not slope.**
+   The original slope-based biomarker (`binding_rate_probe_dfdt_30s`,
+   linear-fit slope of the probe curve's own first 30s) was confirmed not
+   predictive against the corrected Δf (correlation -0.16, worse than
+   chance as a threshold classifier). Redefined per Eva's spec as
+   **early displacement**: the probe curve's own value AT t=30s (linearly
+   interpolated) minus the CHI-stage endpoint baseline — i.e. the same
+   cross-stage baseline delta_f_probe uses, just read 30s into the probe
+   run instead of at the end. New column: `early_displacement_30s` in
+   `chip_summary.csv`.
+
+   Independently re-verified (not just taken on Eva's word): correlation
+   with the corrected `delta_f_probe` is 0.9997 (n=40, excludes
+   15Mar_No.16) — this is essentially the same signal read early, not a
+   different one, which is exactly why it works. Simple threshold-at-0
+   classification accuracy (predict SUCCESS if displacement < 0) came out
+   to 97.5% (39/40) at the 30s window in this reproduction, and flat at
+   97.5% across 15s/30s/45s/60s windows too — close to but not identical to
+   Eva's reported 97.7% (15s) / 95.5% (30s) / 93-98% (15-60s) range, most
+   likely due to a difference in interpolation or accuracy-scoring method
+   between the two implementations, not a discrepancy worth chasing further
+   given both independently land in the same "dramatically better than the
+   old biomarker" conclusion. Either way: this is a real, usable feature for
+   Week 2, unlike the slope version.
+
+9. **RESOLVED — 15Mar_No.16 excluded, not scored FAILURE.** Its CHI-stage
+   endpoint to probe-stage start jumps by ~20,600 Hz — verified directly
+   against the raw curve (CHI ends at 9,996,705.24 Hz, probe starts at
+   9,976,105.68 Hz) and consistent with this chip being absent from the
+   lab's own "Success rate" sheet in `All results_PCA3.xlsx`, i.e. the lab
+   already treats it as a bad measurement, not a real FAILURE outcome.
+   `chip_summary.csv`, `chip_index.csv`, and `cross_check_report.csv` now
+   mark it `EXCLUDED` (still present as a row, so provenance isn't lost, but
+   distinct from FAILURE). 44 of 45 chips are valid/scoreable: 30 SUCCESS,
+   14 FAILURE.
+
+10. **Confirmed, not a bug: chip-ID parsing uses folder names, not
+    filenames.** Checked directly — `NO1.5_CHI.csv` (the typo'd file inside
+    the `No.15` folder) is correctly attributed to chip `14Mar_No.15`, not
+    `No.1`, because `parse_chip_num()` is called on the chip *folder* name
+    in `collect_files()`, never on the filename. No fix needed.

@@ -14,7 +14,7 @@ chip_id,success_or_fail,Chip_ID,Success_or_Fail,_merge
 14Mar_No.7,SUCCESS,14Mar_No.7,SUCCESS,both
 14Mar_No.8,SUCCESS,14Mar_No.8,SUCCESS,both
 14Mar_No.9,SUCCESS,14Mar_No.9,SUCCESS,both
-15Mar_No.16,FAILURE,15Mar_No.16,FAILURE,both
+15Mar_No.16,EXCLUDED,15Mar_No.16,EXCLUDED,both
 15Mar_No.17,SUCCESS,15Mar_No.17,SUCCESS,both
 15Mar_No.18,FAILURE,15Mar_No.18,FAILURE,both
 15Mar_No.19,SUCCESS,15Mar_No.19,SUCCESS,both
