@@ -273,11 +273,41 @@ def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
         .apply(binding_rate, include_groups=False)
         .reset_index(name="binding_rate_dfdt")
     )
+
+    def concordance(rates: pd.Series) -> pd.Series:
+        """Task 5 replicate-concordance rule (per Eva's Q7 spec): average the
+        per-replicate early binding rates only if they agree; otherwise flag
+        as a divergent-replicate artifact rather than passing a corrupted
+        average through. "Agree" = same sign AND relative difference
+        |a-b|/max(|a|,|b|) <= 0.5 for every pair. Calibrated against this
+        dataset's actual replicate-pair spread (see clarifying_questions.md
+        item 11) rather than picked arbitrarily -- chip 21Mar_No.29 (Eva's
+        worked example: R1 a normal decline, R2 flat then spiking well after
+        the 30s window) sits at ratio 0.74, clearly on the divergent side."""
+        vals = rates.dropna().tolist()
+        if len(vals) <= 1:
+            return pd.Series({"rate": vals[0] if vals else np.nan, "status": "SINGLE_REPLICATE"})
+        for i in range(len(vals)):
+            for j in range(i + 1, len(vals)):
+                a, b = vals[i], vals[j]
+                same_sign = (a >= 0) == (b >= 0)
+                denom = max(abs(a), abs(b))
+                rel_diff = abs(a - b) / denom if denom > 0 else 0.0
+                if not same_sign or rel_diff > 0.5:
+                    return pd.Series({"rate": np.nan, "status": "DIVERGENT_REPLICATES"})
+        return pd.Series({"rate": float(np.mean(vals)), "status": "CONCORDANT"})
+
     rate_per_chip = (
-        rate_per_rep.groupby("chip_id")["binding_rate_dfdt"].mean().reset_index()
+        rate_per_rep.groupby("chip_id")["binding_rate_dfdt"]
+        .apply(concordance)
+        .unstack()
+        .reset_index()
     )
     rate_per_chip = rate_per_chip.rename(
-        columns={"binding_rate_dfdt": f"binding_rate_probe_dfdt_{int(BIOMARKER_WINDOW_S)}s"}
+        columns={
+            "rate": f"binding_rate_probe_dfdt_{int(BIOMARKER_WINDOW_S)}s",
+            "status": "binding_rate_replicate_status",
+        }
     )
 
     # Redefined kinetic biomarker (validated -- see clarifying_questions.md item 8):
@@ -309,9 +339,13 @@ def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
     summary = summary.merge(rate_per_chip, on="chip_id", how="left")
     summary = summary.merge(displacement, on="chip_id", how="left")
 
+    # Threshold per Eva's Q4: SUCCESS requires delta_f_probe <= -0.5 Hz, not just < 0.
+    # The -0.5 to 0 Hz band is within instrument baseline noise and is now scored
+    # FAILURE. See clarifying_questions.md item 4.
+    FAILURE_THRESHOLD_HZ = -0.5
     if "delta_f_probe" in summary.columns:
         summary["success_or_fail"] = summary["delta_f_probe"].apply(
-            lambda v: "SUCCESS" if pd.notna(v) and v < 0 else "FAILURE"
+            lambda v: "SUCCESS" if pd.notna(v) and v <= FAILURE_THRESHOLD_HZ else "FAILURE"
         )
     else:
         summary["success_or_fail"] = "FAILURE"

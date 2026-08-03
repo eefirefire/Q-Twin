@@ -43,4 +43,4 @@ Chip_ID,Date,Condition_Label,Concentration_uM,Temperature,Stage_Files_Present,Su
 21Mar_No.6,2026-03-21,No.6 Chi+Probe+Tg 10uM,10,RT,CHI+probe+target,SUCCESS
 21Mar_No.7,2026-03-21,No.7 Probe+NC,NC,RT,probe+target,FAILURE
 21Mar_No.8,2026-03-21,No.8 Probe+TG 0.5uM,0.5,RT,probe+target,FAILURE
-21Mar_No.9,2026-03-21,No.9 Probe+TG 10uM,10,RT,probe+target,SUCCESS
+21Mar_No.9,2026-03-21,No.9 Probe+TG 10uM,10,RT,probe+target,FAILURE

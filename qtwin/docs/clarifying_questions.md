@@ -102,3 +102,66 @@ item 8, which is now the most important open question in this list.**
     the `No.15` folder) is correctly attributed to chip `14Mar_No.15`, not
     `No.1`, because `parse_chip_num()` is called on the chip *folder* name
     in `collect_files()`, never on the filename. No fix needed.
+
+11. **IMPLEMENTED — Q4 failure threshold buffer (-0.5 Hz).** SUCCESS now
+    requires `delta_f_probe <= -0.5`, not just `< 0`. This flips 21Mar_No.9
+    (-0.18 Hz) from SUCCESS to FAILURE — it was the closest chip to the old
+    0 Hz boundary, exactly the kind of noise-band case this rule exists to
+    catch. Updated counts: 29 SUCCESS, 15 FAILURE, 1 EXCLUDED (44 valid).
+
+12. **IMPLEMENTED — Q7 replicate concordance rule, with a caveat worth
+    Eva's attention.** Applied to the rate-based biomarker
+    (`binding_rate_probe_dfdt_30s`): per-replicate rates are averaged only
+    if they agree (same sign AND relative difference `|a-b|/max(|a|,|b|) <=
+    0.5`); otherwise the chip gets `binding_rate_replicate_status =
+    DIVERGENT_REPLICATES` and the rate is left null rather than averaged.
+    New column: `binding_rate_replicate_status` in `chip_summary.csv`
+    (values: `SINGLE_REPLICATE`, `CONCORDANT`, `DIVERGENT_REPLICATES`).
+
+    Verified against Eva's own worked example: 21Mar_No.29's replicates are
+    -0.112 Hz/s (R1) vs -0.029 Hz/s (R2), same sign but a ~74% relative gap
+    — correctly flagged DIVERGENT_REPLICATES. Interesting side note: for the
+    *displacement* biomarker (item 8), this same chip's replicates are much
+    closer (19.08 vs 22.33 Hz) because R2's "massive spike" happens well
+    after the 30s window — so the divergence is specific to the early-rate
+    calculation, not a general R2-is-corrupted-everywhere situation.
+
+    The caveat: with a 0.5 relative-difference threshold, **14 of the 22
+    chips that actually have 2+ probe replicates (64%) get flagged
+    divergent**, not just No.29. That's either a sign this instrument's
+    replicate-to-replicate noise is genuinely high across the board (not an
+    isolated artifact), or that 0.5 is too strict a tolerance for real QCM
+    noise. Both are plausible — flagging rather than silently picking one.
+    Eva/the teacher should sanity-check a few of the other 13 flagged chips
+    by eye before this tolerance gets hard-coded into the Week 2 generator's
+    gatekeeper logic.
+
+13. **CONFIRMED — Q5 NC drift is baseline noise, not binding.** Matches what
+    was already written in Section 4 (Evin's plot-reading inference) — Eva's
+    message confirms this as lab-verified, not just an inference. No change
+    needed beyond removing the "unverified inference" caveat.
+
+14. **CONFIRMED — Q6 biomarker-vs-concentration noise range.** Eva's
+    claimed "-0.02 to +0.03 across all concentrations" for the rate-based
+    biomarker matches almost exactly: this dataset's per-concentration mean
+    `binding_rate_probe_dfdt_30s` ranges from -0.0155 (0 µM) to +0.0266
+    (40 µM), with no clean monotonic trend. Confirms item 6/8's conclusion
+    that the rate metric doesn't scale usefully with concentration.
+
+15. **OPEN — Q2/Q3's target-hybridization-stage numbers don't reproduce
+    here, unlike the probe-stage number.** Eva's message states the Target
+    Hybridization stage has a *positive* shift of +63.49 Hz at 10 µM (vs the
+    probe stage's -62.96 Hz), and describes crowding as a gradual onset that
+    "completely inverts to positive at 10 µM." Checked against
+    `delta_f_target` in this dataset: at 10 µM (n=4, noisy), values are
+    +85.325, -211.450, +42.855, +0.120 Hz — mean -20.79 Hz, or +42.77 Hz
+    excluding the -211.45 outlier (21Mar_No.10). Neither cleanly matches
+    +63.49 Hz, and the sign isn't consistently positive. This might be the
+    same situation as the probe-stage -62.96 Hz reference before it turned
+    out to need a specific formula/aggregation — but unlike that case, this
+    dataset only has 4 target-stage chips at 10 µM (vs the probe stage's
+    much larger sweep), so there isn't enough here to independently pin
+    down where +63.49 Hz comes from. Flagging as open rather than writing it
+    into the guardrails doc as fact — Eva, can you point to the specific
+    sheet/computation this number comes from, the way `All results_PCA3.xlsx`
+    resolved the probe-stage number?
