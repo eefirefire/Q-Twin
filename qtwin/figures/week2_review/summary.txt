@@ -1,0 +1,31 @@
+Q-Twin Week 2 -- synthetic batch review (for Eva, async, ~10-15 min)
+
+What was generated: 310 synthetic curves across 4 classes (CLEAN_PCA3_TARGET,
+DEFECTIVE_CHIP for the probe stage; CLEAN_PCA3_TARGET_HYB, BACKGROUND_SOUP for
+the target stage), plus 8 intentionally-corrupted replicate-pair examples for
+gatekeeper testing (Q7).
+
+K-S validation: BOTH required tests passed on the first attempt --
+Delta-f (probe stage) p=0.94, kinetic biomarker p=0.47 (both well above the
+p>0.05 bar). See ks_validation_report.txt for full numbers.
+
+Specific things worth your eyes:
+1. The target-hybridization curve (+63.49 Hz inversion at 10 uM) is built to
+   your/the paper's spec, but our own real 21 Mar target-stage data doesn't
+   independently confirm it (5 uM is the MOST negative point in our data, not
+   "weakly dampened" as expected; 10 uM is noisy/mixed). Flagged, not hidden --
+   see clarifying_questions.md item 15. Worth a look at whether the
+   CLEAN_PCA3_TARGET_HYB example plots look physically reasonable to you.
+2. Real chips diverge on replicate concordance 64% of the time (14/22), but
+   this generator's synthetic curves only diverge ~13-14% spontaneously
+   (before the 8 intentional examples). Either real instrument noise is
+   higher than this model captures, or the 0.5 concordance tolerance is too
+   strict for real QCM data -- open question either way.
+3. Hold-out set (11 chips, holdout_chips.txt) was reserved AFTER the
+   generators were calibrated against all 44 chips (matching the Week 2 plan's
+   own Day 1-4 ordering) -- fine for Weeks 3-4 model validation, but not a
+   fully leakage-free hold-out for the generator's own noise model.
+
+Files: probe_synthetic_batch.csv, target_synthetic_batch.csv,
+synthetic_batch_v1.csv, ks_validation_report.txt, holdout_chips.txt (all in
+qtwin/data/); plots in qtwin/figures/week2_review/.
