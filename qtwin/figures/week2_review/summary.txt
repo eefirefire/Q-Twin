@@ -6,7 +6,7 @@ the target stage), plus 8 intentionally-corrupted replicate-pair examples
 for gatekeeper testing (Q7).
 
 K-S validation: BOTH required tests passed on the first attempt --
-Delta-f (probe stage) p=0.9394, kinetic biomarker p=0.4676 (both well above the
+Delta-f (probe stage) p=0.8532, kinetic biomarker p=0.2997 (both well above the
 p>0.05 bar). See ks_validation_report.txt for full numbers.
 
 Specific things worth your eyes:
@@ -14,18 +14,27 @@ Specific things worth your eyes:
    your/the paper's spec, but our own real 21 Mar target-stage data doesn't
    independently confirm it (5 uM is the MOST negative point in our data, not
    "weakly dampened" as expected; 10 uM is noisy/mixed). The supplementary
-   (non-required) K-S test for this stage actually FAILS (p=0.033) -- the
+   (non-required) K-S test for this stage actually FAILS (p=0.0058) -- the
    synthetic target curve is statistically distinguishable from our own real
    target-stage data. Flagged, not hidden -- see clarifying_questions.md item
    15. Worth a look at whether the CLEAN_PCA3_TARGET_HYB example plots look
    physically reasonable to you regardless.
 2. Real chips diverge on replicate concordance 64% of the time (14/22), but
-   this generator's synthetic curves only diverge 10.9% spontaneously
-   (33/302, before the 8 intentional examples).
+   this generator's synthetic curves only diverge 12.6% spontaneously
+   (38/302, before the 8 intentional examples).
    Either real instrument noise is higher than this model captures, or the
    0.5 concordance tolerance is too strict for real QCM data -- open
    question either way.
-3. Hold-out set (11 chips, holdout_chips.txt) was reserved AFTER the
+3. The "fraction of final Delta-f reached by 30s" statistic (why the
+   biomarker works as an early proxy) is wider in synthetic data than real
+   (std 0.34 vs real 0.11, one outlier ratio 4.1) --
+   traced to chips whose true endpoint lands very close to the -0.5 Hz
+   threshold, where dividing by a near-zero denominator makes the ratio
+   unstable. Doesn't affect either required K-S test (both still pass), but
+   worth knowing this specific derived statistic isn't tightly matched. See
+   curve_generator.py's SECONDARY_DRIFT_STEP_STD comment for the full
+   diagnosis.
+4. Hold-out set (11 chips, holdout_chips.txt) was reserved AFTER the
    generators were calibrated against all 44 chips (matching the Week 2 plan's
    own Day 1-4 ordering) -- fine for Weeks 3-4 model validation, but not a
    fully leakage-free hold-out for the generator's own noise model.

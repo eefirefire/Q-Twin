@@ -122,8 +122,15 @@ def main():
     import re
     p1_match = re.search(r"1\. Delta-f \(probe stage\):\s*\n\s*KS statistic=[\d.]+, p=([\d.]+)", ks_report_text)
     p2_match = re.search(r"2\. Kinetic biomarker.*?:\s*\n\s*KS statistic=[\d.]+, p=([\d.]+)", ks_report_text, re.DOTALL)
+    p3_match = re.search(r"3\. Delta-f \(target stage\):\s*\n\s*KS statistic=[\d.]+, p=([\d.]+)", ks_report_text)
     p1 = p1_match.group(1) if p1_match else "?"
     p2 = p2_match.group(1) if p2_match else "?"
+    p3 = p3_match.group(1) if p3_match else "?"
+
+    probe_batch = pd.read_csv(DATA_DIR / "probe_synthetic_batch.csv")
+    clean_concordant = probe_batch[(probe_batch["class"] == "CLEAN_PCA3_TARGET") &
+                                    (probe_batch["biomarker_replicate_status"] == "CONCORDANT")]
+    frac = clean_concordant["early_displacement_30s"] / clean_concordant["true_endpoint_delta_f"]
 
     batch = pd.read_csv(DATA_DIR / "synthetic_batch_v1.csv")
     n_total = len(batch)
@@ -149,7 +156,7 @@ Specific things worth your eyes:
    your/the paper's spec, but our own real 21 Mar target-stage data doesn't
    independently confirm it (5 uM is the MOST negative point in our data, not
    "weakly dampened" as expected; 10 uM is noisy/mixed). The supplementary
-   (non-required) K-S test for this stage actually FAILS (p=0.033) -- the
+   (non-required) K-S test for this stage actually FAILS (p={p3}) -- the
    synthetic target curve is statistically distinguishable from our own real
    target-stage data. Flagged, not hidden -- see clarifying_questions.md item
    15. Worth a look at whether the CLEAN_PCA3_TARGET_HYB example plots look
@@ -160,7 +167,16 @@ Specific things worth your eyes:
    Either real instrument noise is higher than this model captures, or the
    0.5 concordance tolerance is too strict for real QCM data -- open
    question either way.
-3. Hold-out set (11 chips, holdout_chips.txt) was reserved AFTER the
+3. The "fraction of final Delta-f reached by 30s" statistic (why the
+   biomarker works as an early proxy) is wider in synthetic data than real
+   (std {frac.std():.2f} vs real 0.11, one outlier ratio {frac.abs().max():.1f}) --
+   traced to chips whose true endpoint lands very close to the -0.5 Hz
+   threshold, where dividing by a near-zero denominator makes the ratio
+   unstable. Doesn't affect either required K-S test (both still pass), but
+   worth knowing this specific derived statistic isn't tightly matched. See
+   curve_generator.py's SECONDARY_DRIFT_STEP_STD comment for the full
+   diagnosis.
+4. Hold-out set (11 chips, holdout_chips.txt) was reserved AFTER the
    generators were calibrated against all 44 chips (matching the Week 2 plan's
    own Day 1-4 ordering) -- fine for Weeks 3-4 model validation, but not a
    fully leakage-free hold-out for the generator's own noise model.

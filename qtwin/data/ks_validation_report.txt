@@ -4,13 +4,13 @@ Week 2 Task 5 -- K-S validation report
 Required tests (synthetic vs. real 44-chip distribution):
 
 1. Delta-f (probe stage):
-   KS statistic=0.0858, p=0.9394
+   KS statistic=0.0987, p=0.8532
    n_real=44, n_synthetic=155
    Result: PASS (p > 0.05 required)
 
 2. Kinetic biomarker (early_displacement_30s, probe stage):
-   KS statistic=0.1417, p=0.4676
-   n_real=44, n_synthetic=136
+   KS statistic=0.1636, p=0.2997
+   n_real=44, n_synthetic=131
    Result: PASS (p > 0.05 required)
 
 Supplementary / informational only, NOT one of the two required tests
@@ -18,7 +18,7 @@ Supplementary / informational only, NOT one of the two required tests
 and clarifying_questions.md item 15; real target-stage sample is only n=10):
 
 3. Delta-f (target stage):
-   KS statistic=0.4452, p=0.0333
+   KS statistic=0.5290, p=0.0058
    n_real=10, n_synthetic=155
    Result: FAIL
 
