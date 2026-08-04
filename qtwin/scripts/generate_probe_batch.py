@@ -10,6 +10,20 @@ a final early_displacement_30s value or the chip is flagged
 DIVERGENT_REPLICATES / Artifact Detected.
 
 Output: qtwin/data/probe_synthetic_batch.csv
+
+IMPORTANT for anyone consuming this CSV: 'class' (CLEAN_PCA3_TARGET /
+DEFECTIVE_CHIP) is the GENERATIVE INTENT -- which kind of curve was asked
+for -- while 'success_or_fail' is DERIVED from the actual generated data
+(true_endpoint_delta_f vs. FAILURE_THRESHOLD_HZ), the same way real chips
+are classified. These usually agree but are not guaranteed to: the
+post-generation noise/drift (see curve_generator.py) can occasionally push
+a CLEAN_PCA3_TARGET chip's actual reading across the threshold into
+FAILURE range, or vice versa for DEFECTIVE_CHIP -- this is intentional
+realism (real noisy measurements can cross a threshold the "true" chip
+quality wouldn't predict), not a labeling bug. Observed rate in this
+dataset: 0/100 CLEAN mislabeled, 1/55 DEFECTIVE mislabeled. If Weeks 3-4
+train a model on 'class' as ground truth, be aware a handful of rows will
+have 'success_or_fail' disagreeing with 'class' by design.
 """
 
 import argparse

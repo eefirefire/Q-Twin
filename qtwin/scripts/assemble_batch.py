@@ -105,7 +105,12 @@ def main(max_retries=4):
         subprocess.run([sys.executable, "generate_target_batch.py", "--seed-offset", str(attempt)],
                         cwd=SCRIPTS_DIR, check=True)
 
-    # Merge
+    # Merge. Note: probe rows have a 'success_or_fail' column (derived from
+    # true_endpoint_delta_f vs. FAILURE_THRESHOLD_HZ -- probe-stage-only,
+    # since the Week 1 guardrails only ever defined SUCCESS/FAILURE for the
+    # probe stage); target rows don't have this concept, so all 155 target
+    # rows get NaN there after the merge. Expected, not a bug -- don't
+    # assume success_or_fail is populated when filtering the merged file.
     probe, target = load_synthetic()
     merged = pd.concat([probe, target], ignore_index=True, sort=False)
     out_path = DATA_DIR / "synthetic_batch_v1.csv"
