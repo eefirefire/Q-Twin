@@ -170,6 +170,11 @@ def sample_clean_final_value(conc_uM: float, rng: np.random.Generator) -> float:
         resid = rng.choice(residuals) + rng.normal(0, 5.0)
         value = trend + resid
         tries += 1
+    if value > C.FAILURE_THRESHOLD_HZ:
+        # 20 retries exhausted without landing in SUCCESS range (didn't
+        # happen in any observed run, but guarantee correctness rather than
+        # silently mislabel a CLEAN_PCA3_TARGET chip as FAILURE-range).
+        value = C.FAILURE_THRESHOLD_HZ - abs(rng.normal(1.0, 0.5))
     return value
 
 
@@ -185,6 +190,10 @@ def sample_defective_final_value(rng: np.random.Generator) -> float:
     while value <= C.FAILURE_THRESHOLD_HZ and tries < 20:
         value = rng.choice(real_fail_values) + rng.normal(0, 3.0)
         tries += 1
+    if value <= C.FAILURE_THRESHOLD_HZ:
+        # Guarantee correctness rather than silently mislabel (see the
+        # matching comment in sample_clean_final_value above).
+        value = C.FAILURE_THRESHOLD_HZ + abs(rng.normal(1.0, 0.5))
     return value
 
 

@@ -15,11 +15,11 @@ Required tests (synthetic vs. real 44-chip distribution):
 
 Supplementary / informational only, NOT one of the two required tests
 (target-stage trend is UNVERIFIED_AGAINST_LOCAL_DATA -- see constants.py
-and clarifying_questions.md item 15; real target-stage sample is only n=4):
+and clarifying_questions.md item 15; real target-stage sample is only n=10):
 
 3. Delta-f (target stage):
-   KS statistic=0.3452, p=0.1065
-   n_real=12, n_synthetic=155
-   Result: PASS
+   KS statistic=0.4452, p=0.0333
+   n_real=10, n_synthetic=155
+   Result: FAIL
 
 Overall: PASSED both required tests.

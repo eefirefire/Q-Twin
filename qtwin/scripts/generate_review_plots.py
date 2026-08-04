@@ -115,35 +115,51 @@ def main():
     plot_pair(reps, "Intentional artifact example (mirrors real 21Mar_No.29)", status, FIG_DIR / name)
     saved.append(name)
 
-    # K-S report + counts for the summary
-    ks_report = (DATA_DIR / "ks_validation_report.txt").read_text()
+    # K-S report + counts for the summary -- computed fresh here, not
+    # hardcoded, so the summary can't silently drift out of sync with the
+    # actual data if either script changes later.
+    ks_report_text = (DATA_DIR / "ks_validation_report.txt").read_text()
+    import re
+    p1_match = re.search(r"1\. Delta-f \(probe stage\):\s*\n\s*KS statistic=[\d.]+, p=([\d.]+)", ks_report_text)
+    p2_match = re.search(r"2\. Kinetic biomarker.*?:\s*\n\s*KS statistic=[\d.]+, p=([\d.]+)", ks_report_text, re.DOTALL)
+    p1 = p1_match.group(1) if p1_match else "?"
+    p2 = p2_match.group(1) if p2_match else "?"
+
     batch = pd.read_csv(DATA_DIR / "synthetic_batch_v1.csv")
     n_total = len(batch)
-    n_divergent = (batch["biomarker_replicate_status"] == "DIVERGENT_REPLICATES").sum()
+    n_forced = int(batch["intentionally_divergent"].sum())
+    n_divergent_total = int((batch["biomarker_replicate_status"] == "DIVERGENT_REPLICATES").sum())
+    n_spontaneous_divergent = n_divergent_total - n_forced
+    n_spontaneous_pool = n_total - n_forced
+    spontaneous_rate = n_spontaneous_divergent / n_spontaneous_pool
 
     summary = f"""Q-Twin Week 2 -- synthetic batch review (for Eva, async, ~10-15 min)
 
 What was generated: {n_total} synthetic curves across 4 classes (CLEAN_PCA3_TARGET,
 DEFECTIVE_CHIP for the probe stage; CLEAN_PCA3_TARGET_HYB, BACKGROUND_SOUP for
-the target stage), plus 8 intentionally-corrupted replicate-pair examples for
-gatekeeper testing (Q7).
+the target stage), plus {n_forced} intentionally-corrupted replicate-pair examples
+for gatekeeper testing (Q7).
 
 K-S validation: BOTH required tests passed on the first attempt --
-Delta-f (probe stage) p=0.94, kinetic biomarker p=0.47 (both well above the
+Delta-f (probe stage) p={p1}, kinetic biomarker p={p2} (both well above the
 p>0.05 bar). See ks_validation_report.txt for full numbers.
 
 Specific things worth your eyes:
 1. The target-hybridization curve (+63.49 Hz inversion at 10 uM) is built to
    your/the paper's spec, but our own real 21 Mar target-stage data doesn't
    independently confirm it (5 uM is the MOST negative point in our data, not
-   "weakly dampened" as expected; 10 uM is noisy/mixed). Flagged, not hidden --
-   see clarifying_questions.md item 15. Worth a look at whether the
-   CLEAN_PCA3_TARGET_HYB example plots look physically reasonable to you.
+   "weakly dampened" as expected; 10 uM is noisy/mixed). The supplementary
+   (non-required) K-S test for this stage actually FAILS (p=0.033) -- the
+   synthetic target curve is statistically distinguishable from our own real
+   target-stage data. Flagged, not hidden -- see clarifying_questions.md item
+   15. Worth a look at whether the CLEAN_PCA3_TARGET_HYB example plots look
+   physically reasonable to you regardless.
 2. Real chips diverge on replicate concordance 64% of the time (14/22), but
-   this generator's synthetic curves only diverge ~13-14% spontaneously
-   (before the 8 intentional examples). Either real instrument noise is
-   higher than this model captures, or the 0.5 concordance tolerance is too
-   strict for real QCM data -- open question either way.
+   this generator's synthetic curves only diverge {spontaneous_rate:.1%} spontaneously
+   ({n_spontaneous_divergent}/{n_spontaneous_pool}, before the {n_forced} intentional examples).
+   Either real instrument noise is higher than this model captures, or the
+   0.5 concordance tolerance is too strict for real QCM data -- open
+   question either way.
 3. Hold-out set (11 chips, holdout_chips.txt) was reserved AFTER the
    generators were calibrated against all 44 chips (matching the Week 2 plan's
    own Day 1-4 ordering) -- fine for Weeks 3-4 model validation, but not a

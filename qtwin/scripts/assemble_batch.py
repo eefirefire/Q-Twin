@@ -12,10 +12,15 @@ comparing synthetic vs. real distributions for:
      biomarker to validate the synthetic target-stage biomarker against)
 
 A third, supplementary/informational K-S test compares target-stage
-synthetic endpoints against real delta_f_target -- included for
-transparency even though the real target-stage sample is tiny (n=4) and
-already flagged as unreliable (clarifying_questions.md item 15), so this
-test is NOT one of the two the task requires passing.
+synthetic endpoints against real delta_f_target (n=10, at real numeric
+concentrations only -- the 2 NC-labeled chips are excluded since the
+synthetic target-stage generator only samples at real numeric
+concentrations, not an NC-equivalent). This test actually FAILS (p<0.05):
+the synthetic target-stage curve (built to the external, unverified
++63.49 Hz spec) is statistically distinguishable from this project's own
+real target-stage data. Included for transparency, not concealed -- this
+reinforces, rather than merely repeats, clarifying_questions.md item 15's
+flag. NOT one of the two tests the task requires passing.
 
 If either of the two required tests fails (p <= 0.05), this script widens
 the relevant noise parameters in curve_generator.py's bootstrap jitter and
@@ -37,10 +42,19 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 
 def load_real():
     cs = pd.read_csv(DATA_DIR / "chip_summary.csv")
-    valid = cs[cs.success_or_fail != "EXCLUDED"]
+    valid = cs[cs.success_or_fail != "EXCLUDED"].copy()
     real_delta_f_probe = valid["delta_f_probe"].dropna().values
     real_biomarker = valid["early_displacement_30s"].dropna().values
-    real_delta_f_target = valid["delta_f_target"].dropna().values
+    # Target-stage synthetic curves are only generated at real numeric
+    # concentrations (see generate_target_batch.py's
+    # _real_target_concentration_weights, which excludes NC-labeled chips).
+    # Filter the real comparison set the same way, or the two populations
+    # aren't comparable -- the 2 real NC chips (21Mar_No.7/No.29) would
+    # otherwise be mixed into a concentration-driven synthetic population
+    # that has no NC-concentration analog.
+    valid["conc"] = pd.to_numeric(valid["concentration_uM"], errors="coerce")
+    target_valid = valid[valid["conc"] > 0]
+    real_delta_f_target = target_valid["delta_f_target"].dropna().values
     return real_delta_f_probe, real_biomarker, real_delta_f_target
 
 
@@ -72,7 +86,7 @@ def main(max_retries=4):
         stat1, p1, pass1 = run_ks(real_delta_f_probe, synth_delta_f_probe, "Delta-f (probe stage)")
         stat2, p2, pass2 = run_ks(real_biomarker, synth_biomarker, "Kinetic biomarker (early_displacement_30s, probe stage)")
         print("Supplementary (not required, informational only -- see item 15):")
-        stat3, p3, pass3 = run_ks(real_delta_f_target, synth_delta_f_target, "Delta-f (target stage, UNVERIFIED trend, n=4 real)")
+        stat3, p3, pass3 = run_ks(real_delta_f_target, synth_delta_f_target, "Delta-f (target stage, UNVERIFIED trend)")
 
         if pass1 and pass2:
             print(f"\nBoth required tests PASS on attempt {attempt}.")
@@ -108,7 +122,7 @@ def main(max_retries=4):
         f.write(f"2. Kinetic biomarker (early_displacement_30s, probe stage):\n   KS statistic={stat2:.4f}, p={p2:.4f}\n   n_real={len(real_biomarker)}, n_synthetic={len(synth_biomarker)}\n   Result: {'PASS' if pass2 else 'FAIL'} (p > 0.05 required)\n\n")
         f.write("Supplementary / informational only, NOT one of the two required tests\n")
         f.write("(target-stage trend is UNVERIFIED_AGAINST_LOCAL_DATA -- see constants.py\n")
-        f.write("and clarifying_questions.md item 15; real target-stage sample is only n=4):\n\n")
+        f.write(f"and clarifying_questions.md item 15; real target-stage sample is only n={len(real_delta_f_target)}):\n\n")
         f.write(f"3. Delta-f (target stage):\n   KS statistic={stat3:.4f}, p={p3:.4f}\n   n_real={len(real_delta_f_target)}, n_synthetic={len(synth_delta_f_target)}\n   Result: {'PASS' if pass3 else 'FAIL'}\n\n")
         f.write(f"Overall: {'PASSED' if (pass1 and pass2) else 'DID NOT PASS'} both required tests.\n")
     print(f"wrote {report_path}")
