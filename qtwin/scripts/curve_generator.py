@@ -47,7 +47,14 @@ def probe_amplitude_trend(conc_uM: np.ndarray) -> np.ndarray:
     """Deterministic equilibrium probe-stage delta_f (Hz) at given
     concentration(s), peaking at PROBE_PEAK_CONC_UM = 10 with
     PROBE_PEAK_HZ = -62.96. Concentrations <= 0 return 0 (no probe, no
-    binding component -- 0 uM chips are baseline drift, handled separately)."""
+    binding component -- 0 uM chips are baseline drift, handled separately).
+
+    NOT A BUG, just worth noting so nobody trips over it later: this
+    predicts ~0 Hz at 0 uM, but real 0 uM chips (14 Mar sweep) average
+    +10.4 Hz. That gap is intentional -- 0 uM chips have no probe binding
+    signal at all, so their real behavior is baseline/thermal drift, which
+    is generated separately via generate_baseline_drift_curve() /
+    sample_defective_final_value(), not through this trend function."""
     conc = np.asarray(conc_uM, dtype=float)
     out = np.zeros_like(conc)
     pos = conc > 0
