@@ -342,6 +342,35 @@ def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
     )
     displacement = displacement.reset_index()
 
+    # Week 3 Task 1 needs a replicate-concordance status for early_displacement_30s
+    # itself (not just for the rate biomarker above) -- the gatekeeper's secondary
+    # feature is supposed to describe the trustworthiness of its primary feature
+    # (early_displacement_30s), but until now only the RATE biomarker had a
+    # concordance column here (binding_rate_replicate_status), while Week 2's
+    # synthetic data computed concordance on DISPLACEMENT instead (see
+    # curve_generator.py / generate_probe_batch.py). Different column, different
+    # underlying metric -- would have been a real train/validate mismatch for
+    # Task 1's gatekeeper if left as-is. Added here so real and synthetic data
+    # define this the same way.
+    disp_per_rep_baselined = disp_per_rep.copy()
+    disp_per_rep_baselined["baseline"] = disp_per_rep_baselined["chip_id"].map(chi_baseline_disp)
+    disp_per_rep_baselined["displacement"] = (
+        disp_per_rep_baselined["probe_at_window"] - disp_per_rep_baselined["baseline"]
+    )
+    displacement_concordance = (
+        disp_per_rep_baselined.groupby("chip_id")["displacement"]
+        .apply(concordance)
+        .unstack()
+        .reset_index()
+    )
+    displacement_concordance = displacement_concordance.rename(
+        columns={"rate": "_displacement_concordant_mean", "status": "displacement_replicate_status"}
+    )
+    displacement = displacement.merge(
+        displacement_concordance[["chip_id", "displacement_replicate_status"]],
+        on="chip_id", how="left",
+    )
+
     summary = meta.merge(pivot, on="chip_id", how="left")
     summary = summary.merge(rate_per_chip, on="chip_id", how="left")
     summary = summary.merge(displacement, on="chip_id", how="left")
