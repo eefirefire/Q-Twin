@@ -186,6 +186,14 @@ def main():
 
     torch.save(final_model.state_dict(), MODEL_DIR / "lstm_probe_stage.pt")
 
+    # Week 3 Task 5 (Streamlit mockup) needs to reload this exact model outside
+    # this script -- save the architecture choice and normalization stats
+    # (fit on synthetic data only, see `normalize()` call above) alongside the
+    # weights so the mockup doesn't have to re-derive or guess either one.
+    import json
+    with open(MODEL_DIR / "lstm_config.json", "w", encoding="utf-8") as f:
+        json.dump({"hidden_size": best_hidden, "seq_mean": float(mean), "seq_std": float(std)}, f, indent=2)
+
     with open(MODEL_DIR / "lstm_metrics.txt", "w", encoding="utf-8") as f:
         f.write("Week 3 Task 3 -- Stage 2a Sequence Model (LSTM) Prototype\n")
         f.write("=" * 60 + "\n\n")
