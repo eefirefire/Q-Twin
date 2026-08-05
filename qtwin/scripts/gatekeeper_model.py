@@ -142,7 +142,7 @@ def main():
     non_div = val_full[val_full["is_divergent"] == 0]
     near_boundary = non_div[non_div["early_displacement_30s"].between(-2.0, 0.5)]
 
-    with open(MODEL_DIR / "gatekeeper_metrics.txt", "w") as f:
+    with open(MODEL_DIR / "gatekeeper_metrics.txt", "w", encoding="utf-8") as f:
         f.write("Week 3 Task 1 -- Stage 0 Chip Quality Gatekeeper\n")
         f.write("=" * 60 + "\n\n")
         f.write("HONEST CAVEAT on the 100% accuracy below: this isn't a hard\n")

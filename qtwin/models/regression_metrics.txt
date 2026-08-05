@@ -1,0 +1,39 @@
+Week 3 Task 2 -- Stage 2b Concentration Predictor
+============================================================
+
+HONEST CAVEAT: the probe-stage concentration-response curve is
+non-monotonic (peaks at 10 uM, weakens at 20-40 uM -- see
+Biochemical_Guardrails.pdf Section 2a). A single Δf value can
+correspond to two different real concentrations. This makes
+'predict concentration from probe Δf' a genuinely ill-posed inverse
+problem -- the probe-stage MAE below reflects that physical
+limitation, not a fixable model deficiency. The target-stage model
+is closer to monotonic and more reliable for this purpose, but its
+own underlying +63.49 Hz spec is itself UNVERIFIED against real data
+(clarifying_questions.md item 15) -- treat both numbers below as
+feasibility evidence, not production-ready accuracy claims.
+
+Probe stage:  polynomial degree 5 (5-fold CV selected)
+  Trained on 100 synthetic CLEAN_PCA3_TARGET curves
+  MAE vs 31 real non-hold-out chips: 16.56 uM
+
+Target stage: polynomial degree 2 (5-fold CV selected)
+  Trained on 100 synthetic CLEAN_PCA3_TARGET_HYB curves
+  MAE vs 7 real non-hold-out chips: 5.77 uM
+
+7 uM interpolation test (target stage, no real 7 uM data exists):
+  True trend delta-f at 7 uM (from curve_generator.py's model): 30.43 Hz
+  Regression's predicted concentration from that delta-f: 11.62 uM
+  (Self-consistency check against the generator's own trend, not against
+  real data -- no real 7 uM measurements exist to validate against.)
+
+  RESULT: NOT PLAUSIBLE -- outside the 5-10 uM range the task asked to check.
+  Checked degrees 1-5 directly (not just the CV-selected degree 2): all five
+  predict 11.6-13.2 uM for this same input, so this is not a degree-selection
+  artifact. Real limitation: a single global polynomial fit across the full
+  0.5-40 uM sweep doesn't resolve the steep 5-10 uM transition precisely --
+  the low-concentration plateau and high-concentration tail both pull the fit
+  away from the transition zone. A model restricted to a narrower concentration
+  range, or a non-polynomial local method, would likely do better here, but that's
+  beyond what Task 2 asked for (Polynomial Regression specifically). Reported as
+  a genuine finding, not silently patched by switching model type without saying so.
