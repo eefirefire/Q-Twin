@@ -56,7 +56,8 @@ def make_replicate_pair(final_value: float, kind: str, rng: np.random.Generator,
     return reps
 
 
-def build_rows(kind: str, n: int, rng: np.random.Generator, concs: np.ndarray, forced_divergent: int = 0):
+def build_rows(kind: str, n: int, rng: np.random.Generator, concs: np.ndarray, forced_divergent: int = 0,
+               sequences: list = None):
     rows = []
     gen_kind_for_forced = "CLEAN_PCA3_TARGET" if kind == "CLEAN_PCA3_TARGET_HYB" else "DEFECTIVE_CHIP"
     for i in range(n):
@@ -75,6 +76,10 @@ def build_rows(kind: str, n: int, rng: np.random.Generator, concs: np.ndarray, f
 
         disp_vals = [cg.compute_early_displacement(t, y) for t, y in reps]
         final_disp, status = cg.check_replicate_concordance(disp_vals[0], disp_vals[1])
+
+        if sequences is not None:
+            resampled = [cg.resample_curve(t, y) for t, y in reps]
+            sequences.append(np.mean(resampled, axis=0))
 
         true_endpoint = float(np.mean([y[-1] for _, y in reps]))
 
@@ -101,10 +106,13 @@ def main():
     rng = np.random.default_rng(BASE_SEED + args.seed_offset)
     concs = _real_target_concentration_weights()
 
+    sequences = []
     rows = []
-    rows += build_rows("CLEAN_PCA3_TARGET_HYB", N_CLEAN, rng, concs, forced_divergent=N_INTENTIONAL_DIVERGENT // 2)
+    rows += build_rows("CLEAN_PCA3_TARGET_HYB", N_CLEAN, rng, concs, forced_divergent=N_INTENTIONAL_DIVERGENT // 2,
+                        sequences=sequences)
     rows += build_rows("BACKGROUND_SOUP", N_BACKGROUND, rng, concs,
-                        forced_divergent=N_INTENTIONAL_DIVERGENT - N_INTENTIONAL_DIVERGENT // 2)
+                        forced_divergent=N_INTENTIONAL_DIVERGENT - N_INTENTIONAL_DIVERGENT // 2,
+                        sequences=sequences)
 
     df = pd.DataFrame(rows)
     out_path = OUT_DIR / "target_synthetic_batch.csv"
@@ -112,6 +120,11 @@ def main():
     print(f"wrote {out_path} ({len(df)} synthetic curves)")
     print(df["class"].value_counts())
     print(df["biomarker_replicate_status"].value_counts())
+
+    seq_array = np.array(sequences)
+    seq_path = OUT_DIR / "target_synthetic_sequences.npz"
+    np.savez(seq_path, sequences=seq_array, synthetic_id=df["synthetic_id"].values)
+    print(f"wrote {seq_path} (shape {seq_array.shape})")
 
 
 if __name__ == "__main__":

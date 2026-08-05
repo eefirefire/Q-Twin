@@ -1,0 +1,47 @@
+Week 3 Task 3 -- Stage 2a Sequence Model (LSTM) Prototype
+============================================================
+
+This model takes the full probe-stage curve shape (60-point resampled
+sequence, 0-45s window) rather than the single early_displacement_30s
+number the Task 1 gatekeeper used. DIVERGENT_REPLICATES rows are NOT
+feature-blanked the way they are for the gatekeeper -- this model sees
+the genuine average-of-two-replicates curve (including the corrupted
+flat/spike replicate baked into that average) and has to learn to
+recognize divergence from curve shape itself.
+
+Architecture: single-layer LSTM -> dropout(0.2) -> linear(3-way softmax).
+Tuning iteration performed: hidden_size in {16, 32, 64}, selected via an
+internal 80/20 stratified split of the synthetic training data (NOT the
+real validation set -- that split is only used for architecture choice).
+  hidden_size= 16: internal tuning-split accuracy = 0.903
+  hidden_size= 32: internal tuning-split accuracy = 0.839
+  hidden_size= 64: internal tuning-split accuracy = 0.839
+Selected hidden_size=16.
+
+Trained on all 155 synthetic probe-stage sequences (probe_synthetic_sequences.npz).
+Validated on 33 real chips (11 excluded/hold-out chips dropped, per the same hold-out set as Tasks 1-2).
+
+Overall accuracy: 0.879
+
+Full sklearn classification_report:
+                      precision    recall  f1-score   support
+
+             SUCCESS       0.82      1.00      0.90        18
+             FAILURE       1.00      1.00      1.00         8
+DIVERGENT_REPLICATES       1.00      0.43      0.60         7
+
+            accuracy                           0.88        33
+           macro avg       0.94      0.81      0.83        33
+        weighted avg       0.90      0.88      0.86        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[18  0  0]
+ [ 0  8  0]
+ [ 4  0  3]]
+
+HONEST CAVEAT: 155 synthetic training curves and a 3-class problem is a
+small dataset for a sequence model -- this is a feasibility prototype, not
+a production classifier. Compare this accuracy against gatekeeper_metrics.txt
+(Task 1's Random Forest on the same real validation chips) to see whether the
+extra curve-shape information actually helps over the single-number biomarker,
+or whether it just adds noise/variance for a dataset this size.

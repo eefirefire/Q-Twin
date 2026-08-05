@@ -258,6 +258,30 @@ def compute_early_displacement(t: np.ndarray, y: np.ndarray, window_s: float = C
     return float(np.interp(window_s, t, y) - y[0])
 
 
+# Week 3 Task 3 (LSTM): fixed-length resampling window. 45s chosen because
+# it's safely under BOTH the real probe-stage minimum duration (49.99s,
+# raw_timeseries_master.csv) and the synthetic DURATION_MIN_S (50.0) --
+# every curve, real or synthetic, has real data across this whole window,
+# so no curve needs extrapolation past what was actually measured/generated.
+SEQUENCE_WINDOW_S = 45.0
+SEQUENCE_N_POINTS = 60  # ~0.75s spacing over the 45s window
+
+
+def resample_curve(t: np.ndarray, y: np.ndarray, window_s: float = SEQUENCE_WINDOW_S,
+                    n_points: int = SEQUENCE_N_POINTS) -> np.ndarray:
+    """Linearly interpolate (t, y) onto a fixed grid of n_points over
+    [0, window_s], so curves of different native duration/sampling all
+    become fixed-length vectors an LSTM can batch. Returns y-values only
+    (baseline-relative, so y[0] ~= 0); the time grid itself is implicit
+    and identical for every curve. Requires t.max() >= window_s -- callers
+    should filter out anything shorter first rather than silently
+    extrapolate past real/generated data."""
+    if t.max() < window_s:
+        raise ValueError(f"curve duration {t.max():.1f}s shorter than window {window_s}s -- cannot resample without extrapolating")
+    grid = np.linspace(0.0, window_s, n_points)
+    return np.interp(grid, t, y)
+
+
 # --- Target-stage equilibrium amplitude vs. concentration ------------------
 # UNVERIFIED_AGAINST_LOCAL_DATA (see constants.py and clarifying_questions.md
 # item 15). Built to match the externally-specified spec (weak dampened
