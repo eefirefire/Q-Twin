@@ -1,5 +1,5 @@
 # Week 2 Task 6: blind hold-out set for Weeks 3-4 model validation.
-# 11 of 44 valid chips (25.0%), reserved 2026-08-04.
+# 11 of 44 valid chips (25.0%), reserved 2026-08-05.
 # SUCCESS: 7, FAILURE: 4
 # DO NOT use these chip IDs to seed/calibrate any generator or model from this point on.
 #

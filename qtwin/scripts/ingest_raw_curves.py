@@ -17,11 +17,18 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from constants import BIOMARKER_WINDOW_S, EXCLUDED_CHIP_IDS, FAILURE_THRESHOLD_HZ
+# BIOMARKER_WINDOW_S, FAILURE_THRESHOLD_HZ, and EXCLUDED_CHIP_IDS used to be
+# hardcoded separately in this file (duplicating constants.py, which was
+# written afterwards as "the" single source of truth). Consolidated here so
+# a future change to any of the three in constants.py can't silently apply
+# to Week 2's synthetic generator while this real-data pipeline keeps using
+# a stale value -- found on a code review pass before Week 3.
+#
 # Kinetic biomarker window: see Biochemical_Guardrails.md for the justification.
 # 30s is used (not 60s) because at 40 uM the crowding inversion can already start
 # bending the curve well before 60s, and the ~0.6s sampling interval gives ~45-50
 # points in a 30s window, which is enough for a stable linear-fit slope.
-BIOMARKER_WINDOW_S = 30.0
 
 RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 OUT_DIR = Path(__file__).resolve().parents[1] / "data"
@@ -339,10 +346,10 @@ def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
     summary = summary.merge(rate_per_chip, on="chip_id", how="left")
     summary = summary.merge(displacement, on="chip_id", how="left")
 
-    # Threshold per Eva's Q4: SUCCESS requires delta_f_probe <= -0.5 Hz, not just < 0.
-    # The -0.5 to 0 Hz band is within instrument baseline noise and is now scored
-    # FAILURE. See clarifying_questions.md item 4.
-    FAILURE_THRESHOLD_HZ = -0.5
+    # Threshold per Eva's Q4: SUCCESS requires delta_f_probe <= FAILURE_THRESHOLD_HZ
+    # (-0.5 Hz, imported from constants.py). The -0.5 to 0 Hz band is within
+    # instrument baseline noise and is now scored FAILURE. See
+    # clarifying_questions.md item 4.
     if "delta_f_probe" in summary.columns:
         summary["success_or_fail"] = summary["delta_f_probe"].apply(
             lambda v: "SUCCESS" if pd.notna(v) and v <= FAILURE_THRESHOLD_HZ else "FAILURE"
@@ -350,11 +357,13 @@ def build_chip_summary(master: pd.DataFrame) -> pd.DataFrame:
     else:
         summary["success_or_fail"] = "FAILURE"
 
-    # 15Mar_No.16: lab-flagged bad measurement, not a real chip outcome -- CHI-to-probe
-    # jump is ~20,600 Hz (see clarifying_questions.md item "EXCLUDED"), confirmed against
-    # the raw curve and consistent with this chip being absent from the lab's own
-    # "Success rate" sheet in All results_PCA3.xlsx. Excluded, not scored as FAILURE.
-    summary.loc[summary["chip_id"] == "15Mar_No.16", "success_or_fail"] = "EXCLUDED"
+    # Lab-flagged bad measurements (imported from constants.py's
+    # EXCLUDED_CHIP_IDS -- currently just 15Mar_No.16, ~20,600 Hz nonsensical
+    # CHI-to-probe jump, see clarifying_questions.md item "EXCLUDED"),
+    # confirmed against the raw curve and consistent with this chip being
+    # absent from the lab's own "Success rate" sheet in All results_PCA3.xlsx.
+    # Excluded, not scored as FAILURE.
+    summary.loc[summary["chip_id"].isin(EXCLUDED_CHIP_IDS), "success_or_fail"] = "EXCLUDED"
 
     return summary.sort_values("chip_id").reset_index(drop=True)
 
