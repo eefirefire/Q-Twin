@@ -176,3 +176,22 @@ item 8, which is now the most important open question in this list.**
     test failing for this stage (p=0.0058). Flagged, not solved — needs
     Eva's input on the underlying +63.49 Hz number when she's back; not
     blocking Week 3's start in the meantime.
+
+16. **OPEN -- Week 3 Task 4: why the synthetic generator doesn't reproduce
+    real replicates' ~57-64% divergence rate.** Full writeup:
+    `Task4_Replicate_Divergence_Investigation.md`. Short version: real probe
+    replicate pairs flip SIGN at the 30s read 38% of the time (8/21) vs. only
+    4% for organic (non-forced) synthetic pairs -- because
+    `generate_probe_batch.py` gives both replicates of a chip the same
+    `final_value`/trend and only independent *noise* on top, while real
+    replicates behave like two physically independent binding events with
+    their own kinetics. Not a concordance-rule bug (same rule, same threshold,
+    applied identically both places) and not a re-litigation of item 12's
+    "is 64% real or is the threshold too strict" question -- this is the
+    separate, narrower finding that the generator's noise model is the gap.
+    Recommended fix (independent per-replicate k_obs jitter, not just
+    per-replicate noise) is NOT implemented yet -- it would require
+    regenerating both synthetic batches and re-running everything downstream
+    (K-S tests, gatekeeper, regression, LSTM, hold-out split), so it's left as
+    a flagged recommendation pending Eva/the teacher's sign-off rather than
+    done unilaterally mid-Task-4.
