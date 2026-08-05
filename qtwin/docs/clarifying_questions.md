@@ -165,3 +165,14 @@ item 8, which is now the most important open question in this list.**
     into the guardrails doc as fact — Eva, can you point to the specific
     sheet/computation this number comes from, the way `All results_PCA3.xlsx`
     resolved the probe-stage number?
+
+    **Update (Data_Sanity_Audit.md, 2026-08-05):** the Week 2 synthetic
+    target-hybridization generator, built to the +63.49 Hz spec, produces
+    curves that are visually indistinguishable from the BACKGROUND_SOUP
+    (no-target) class at 5 µM — both just wander noisily near zero, no clear
+    trend, since the modeled target-stage signal at 5 µM is only ~-0.55 Hz.
+    At 10 µM the two classes separate cleanly. Consistent with (not new
+    evidence beyond, but a visual confirmation of) the supplementary K-S
+    test failing for this stage (p=0.0058). Flagged, not solved — needs
+    Eva's input on the underlying +63.49 Hz number when she's back; not
+    blocking Week 3's start in the meantime.
