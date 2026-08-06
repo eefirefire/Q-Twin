@@ -1,0 +1,10 @@
+Biomarker threshold-classification accuracy reconciliation
+============================================================
+
+Ground truth: chip_summary.csv success_or_fail (44 valid chips, 29 SUCCESS / 15 FAILURE), using the current -0.5 Hz FAILURE_THRESHOLD_HZ rule throughout.
+
+  window  n_scoreable   old (0 Hz cutoff)  correct (-0.5 Hz cutoff)
+     15s           44              95.5% (42/44)                    97.7% (43/44)
+     30s           44              93.2% (41/44)                    97.7% (43/44)
+     45s           44              93.2% (41/44)                    97.7% (43/44)
+     60s           44              95.5% (42/44)                    97.7% (43/44)

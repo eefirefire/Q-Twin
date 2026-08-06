@@ -67,11 +67,13 @@ a real signal (`FAILURE_THRESHOLD_HZ = -0.5` in `constants.py`).
 at t = 30 s (linearly interpolated), minus the same CHI-stage endpoint
 baseline `delta_f_probe` uses — i.e. an early read of the same underlying
 signal, not a different one. Correlation with the full-run `delta_f_probe`
-across the 44 valid chips: **r = 0.9997**. A simple threshold-at-0
-classification of this biomarker alone scores 97.5% (39/40 scoreable chips)
-at the 30 s window, and holds flat at 97.5% across 15/30/45/60 s windows —
-this single number is the reason the Stage 0 gatekeeper (1.5) performs as
-well as it does.
+across the 44 valid chips: **r = 0.9997**. Threshold classification against
+the current −0.5 Hz SUCCESS/FAILURE rule (not the old 0 Hz cutoff — an
+earlier draft of this section mislabeled the test as "threshold-at-0";
+caught and corrected 2026-08-30, see `clarifying_questions.md` item 8)
+scores **97.7% (43/44 scoreable chips)** at the 30 s window, and holds flat
+at 97.7% across 15/30/45/60 s windows — this single number is the reason
+the Stage 0 gatekeeper (1.5) performs as well as it does.
 
 **Replicate concordance rule:** two replicate readings `a`, `b` (for either
 the displacement biomarker or the endpoint value) are called `CONCORDANT`

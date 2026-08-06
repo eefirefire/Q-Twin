@@ -86,6 +86,54 @@ item 8, which is now the most important open question in this list.**
    old biomarker" conclusion. Either way: this is a real, usable feature for
    Week 2, unlike the slope version.
 
+   **Update (2026-08-30) — Eva flagged this 97.5% figure as possibly using
+   the stale 0 Hz threshold instead of the current -0.5 Hz rule, and sent
+   a re-verification (95.5%/93.2%/93.2%/95.5% across 15/30/45/60s, vs. an
+   "old" 97.7%/95.5%/95.5%/93.2%). Independently re-derived from scratch
+   (see `biomarker_window_reconciliation.py`, reusing
+   `ingest_raw_curves.py`'s exact CHI-baseline logic, including the
+   No.7/8/9/10 no-CHI-file fallback) before changing anything, per this
+   project's standing rule of verifying Eva's messages against real data
+   rather than taking them on trust:**
+
+   - The text description above ("threshold-at-0", "displacement < 0") IS
+     stale/wrong as a description — legitimate catch. But the NUMBER it was
+     attached to (97.5%) was not: recomputing with the CHI-only baseline (no
+     fallback, n=40, matching the original's implicit scope) at the
+     **-0.5 Hz** threshold reproduces 97.5% (39/40) EXACTLY, flat across all
+     four windows. The 0 Hz threshold on that same n=40 set gives a
+     *different*, window-varying pattern instead. So the original number was
+     already computed against -0.5 Hz; only its prose description was
+     mislabeled.
+   - Using the fuller, more correct baseline (CHI endpoint averaged per
+     replicate, WITH the No.7/8/9/10 probe-start fallback, n=44 — i.e.
+     exactly `ingest_raw_curves.py`'s own methodology) at -0.5 Hz gives
+     **97.7% (43/44), also flat across all four windows** — see
+     `qtwin/models/biomarker_window_reconciliation.txt`.
+   - Could not reproduce Eva's window-*varying* pattern under either
+     baseline definition — both give a flat accuracy across 15/30/45/60s,
+     not a curve that dips then recovers. Traced the specific flip chip
+     (21Mar_No.9, delta_f_probe=-0.18 Hz) through all four windows directly:
+     switching from 0 Hz to -0.5 Hz correctly reclassifies it FAILURE at
+     15/30/45s (previously wrong) and leaves 60s unchanged (already
+     right) — i.e. the -0.5 Hz correction only ever *improves* or holds
+     accuracy here, it doesn't trade one window's gain for another's loss
+     the way Eva's two columns suggest.
+   - Not dismissing Eva's numbers — flagging a specific, reproducible
+     disagreement for her to check her own script's threshold direction
+     against (worth double-checking whether her "old" and "new" columns
+     got swapped, since her "new/-0.5Hz" column matches this project's
+     0 Hz-threshold numbers almost exactly). Canonical number in this
+     project going forward: **97.7% (43/44), flat across all windows**,
+     using the -0.5 Hz threshold and the full No.7-10-fallback baseline —
+     `early_displacement_30s`'s own value in `chip_summary.csv` already
+     uses this exact baseline, so this is also now the internally
+     consistent number to cite.
+   - Success rate: checked separately, already correct everywhere in this
+     project's docs (65.9%, 29/44) — the 68.2% figure only appears once,
+     explicitly labeled as the OLD 0 Hz cutoff's rate for comparison, not
+     presented as current. No fix needed there.
+
 9. **RESOLVED — 15Mar_No.16 excluded, not scored FAILURE.** Its CHI-stage
    endpoint to probe-stage start jumps by ~20,600 Hz — verified directly
    against the raw curve (CHI ends at 9,996,705.24 Hz, probe starts at
