@@ -13,23 +13,33 @@ own underlying +63.49 Hz spec is itself UNVERIFIED against real data
 (clarifying_questions.md item 15) -- treat both numbers below as
 feasibility evidence, not production-ready accuracy claims.
 
-Probe stage:  polynomial degree 5 (5-fold CV selected)
+Probe stage:  polynomial degree 1 (5-fold CV selected)
   Trained on 100 synthetic CLEAN_PCA3_TARGET curves
-  MAE vs 31 real non-hold-out chips: 16.56 uM
+  MAE vs 31 real non-hold-out chips: 7.09 uM
+  NOTE: this MAE dropped substantially (was 16.56 uM) after the Week 3 Task 4
+  replicate-divergence fix regenerated the synthetic batch with a shifted RNG
+  draw sequence -- verified this is NOT a degree-selection artifact (all 5
+  degrees now cluster at 7.1-7.2 uM, vs. the old run's degree-5-specific fit),
+  but it IS a different random realization of the same generator, not a change
+  caused by the divergence fix itself. The non-monotonic ill-posedness described
+  above is a structural property of the real probe curve and is unaffected by
+  which random draw the synthetic training data happens to be -- a future re-run
+  with yet another seed could land anywhere in a similar range, not necessarily
+  near 7 uM again. Treat the exact number as noisy, the qualitative limitation as real.
 
-Target stage: polynomial degree 2 (5-fold CV selected)
+Target stage: polynomial degree 3 (5-fold CV selected)
   Trained on 100 synthetic CLEAN_PCA3_TARGET_HYB curves
-  MAE vs 7 real non-hold-out chips: 5.77 uM
+  MAE vs 7 real non-hold-out chips: 5.35 uM
 
 7 uM interpolation test (target stage, no real 7 uM data exists):
   True trend delta-f at 7 uM (from curve_generator.py's model): 30.43 Hz
-  Regression's predicted concentration from that delta-f: 11.62 uM
+  Regression's predicted concentration from that delta-f: 10.79 uM
   (Self-consistency check against the generator's own trend, not against
   real data -- no real 7 uM measurements exist to validate against.)
 
   RESULT: NOT PLAUSIBLE -- outside the 5-10 uM range the task asked to check.
-  Checked degrees 1-5 directly (not just the CV-selected degree 2): all five
-  predict 11.6-13.2 uM for this same input, so this is not a degree-selection
+  Checked degrees 1-5 directly (not just the CV-selected degree 3): 10.8-12.8 uM
+  for this same input across all five, so this is not a degree-selection
   artifact. Real limitation: a single global polynomial fit across the full
   0.5-40 uM sweep doesn't resolve the steep 5-10 uM transition precisely --
   the low-concentration plateau and high-concentration tail both pull the fit

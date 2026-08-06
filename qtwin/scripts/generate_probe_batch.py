@@ -56,13 +56,21 @@ def _real_concentration_weights():
 
 
 def make_replicate_pair(final_value: float, kind: str, rng: np.random.Generator, duration_s: float):
-    """Generate two independent replicate curves for one synthetic chip."""
+    """Generate two independent replicate curves for one synthetic chip.
+
+    Week 3 Task 4 fix: each replicate gets its OWN target value
+    (final_value + independent jitter, see
+    cg.REPLICATE_KINETIC_JITTER_STD), not the shared chip-level
+    final_value directly -- modeling two physically independent
+    immobilization spots instead of two noisy readings of the same
+    binding event. See Task4_Replicate_Divergence_Investigation.md."""
     reps = []
     for _ in range(2):
+        replicate_value = cg.jitter_replicate_final_value(final_value, rng)
         if kind == "CLEAN_PCA3_TARGET":
-            t, y = cg.generate_association_curve(final_value, duration_s, rng)
+            t, y = cg.generate_association_curve(replicate_value, duration_s, rng)
         else:  # DEFECTIVE_CHIP
-            t, y = cg.generate_baseline_drift_curve(final_value, duration_s, rng)
+            t, y = cg.generate_baseline_drift_curve(replicate_value, duration_s, rng)
         reps.append((t, y))
     return reps
 

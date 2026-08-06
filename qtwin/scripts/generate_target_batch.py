@@ -46,12 +46,17 @@ def _real_target_concentration_weights():
 
 
 def make_replicate_pair(final_value: float, kind: str, rng: np.random.Generator, duration_s: float):
+    """Week 3 Task 4 fix -- see the matching function in
+    generate_probe_batch.py for the full rationale: each replicate gets
+    its own independently jittered target value, not the shared
+    chip-level final_value directly."""
     reps = []
     for _ in range(2):
+        replicate_value = cg.jitter_replicate_final_value(final_value, rng)
         if kind == "CLEAN_PCA3_TARGET_HYB":
-            t, y = cg.generate_association_curve(final_value, duration_s, rng)
+            t, y = cg.generate_association_curve(replicate_value, duration_s, rng)
         else:  # BACKGROUND_SOUP
-            t, y = cg.generate_baseline_drift_curve(final_value, duration_s, rng)
+            t, y = cg.generate_baseline_drift_curve(replicate_value, duration_s, rng)
         reps.append((t, y))
     return reps
 

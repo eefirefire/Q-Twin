@@ -9,35 +9,46 @@ the genuine average-of-two-replicates curve (including the corrupted
 flat/spike replicate baked into that average) and has to learn to
 recognize divergence from curve shape itself.
 
-Architecture: single-layer LSTM -> dropout(0.2) -> linear(3-way softmax).
-Tuning iteration performed: hidden_size in {16, 32, 64}, selected via an
-internal 80/20 stratified split of the synthetic training data (NOT the
-real validation set -- that split is only used for architecture choice).
-  hidden_size= 16: internal tuning-split accuracy = 0.903
-  hidden_size= 32: internal tuning-split accuracy = 0.839
-  hidden_size= 64: internal tuning-split accuracy = 0.839
-Selected hidden_size=16.
+Architecture: single-layer LSTM -> dropout(0.2) -> linear(3-way softmax),
+class-weighted CrossEntropyLoss (inverse class frequency -- added after the
+Task 4 divergence fix shrank FAILURE to a training-set minority; matches the
+gatekeeper's class_weight='balanced' approach).
+Tuning iteration performed: hidden_size in {16, 32, 64} x epochs in
+{80, 150, 220}, selected via an internal 80/20 stratified split of the
+synthetic training data (NOT the real validation set -- that split is only
+used for architecture/epoch choice, never to pick hyperparameters by peeking
+at real accuracy).
+  hidden_size= 16 epochs= 80: internal tuning-split accuracy = 0.516
+  hidden_size= 16 epochs=150: internal tuning-split accuracy = 0.452
+  hidden_size= 16 epochs=220: internal tuning-split accuracy = 0.581
+  hidden_size= 32 epochs= 80: internal tuning-split accuracy = 0.548
+  hidden_size= 32 epochs=150: internal tuning-split accuracy = 0.548
+  hidden_size= 32 epochs=220: internal tuning-split accuracy = 0.484
+  hidden_size= 64 epochs= 80: internal tuning-split accuracy = 0.548
+  hidden_size= 64 epochs=150: internal tuning-split accuracy = 0.548
+  hidden_size= 64 epochs=220: internal tuning-split accuracy = 0.516
+Selected hidden_size=16, epochs=220.
 
 Trained on all 155 synthetic probe-stage sequences (probe_synthetic_sequences.npz).
 Validated on 33 real chips (11 excluded/hold-out chips dropped, per the same hold-out set as Tasks 1-2).
 
-Overall accuracy: 0.879
+Overall accuracy: 0.758
 
 Full sklearn classification_report:
                       precision    recall  f1-score   support
 
-             SUCCESS       0.82      1.00      0.90        18
-             FAILURE       1.00      1.00      1.00         8
-DIVERGENT_REPLICATES       1.00      0.43      0.60         7
+             SUCCESS       1.00      0.72      0.84        18
+             FAILURE       1.00      0.62      0.77         8
+DIVERGENT_REPLICATES       0.47      1.00      0.64         7
 
-            accuracy                           0.88        33
-           macro avg       0.94      0.81      0.83        33
-        weighted avg       0.90      0.88      0.86        33
+            accuracy                           0.76        33
+           macro avg       0.82      0.78      0.75        33
+        weighted avg       0.89      0.76      0.78        33
 
 Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
-[[18  0  0]
- [ 0  8  0]
- [ 4  0  3]]
+[[13  0  5]
+ [ 0  5  3]
+ [ 0  0  7]]
 
 HONEST CAVEAT: 155 synthetic training curves and a 3-class problem is a
 small dataset for a sequence model -- this is a feasibility prototype, not
@@ -45,3 +56,19 @@ a production classifier. Compare this accuracy against gatekeeper_metrics.txt
 (Task 1's Random Forest on the same real validation chips) to see whether the
 extra curve-shape information actually helps over the single-number biomarker,
 or whether it just adds noise/variance for a dataset this size.
+
+UPDATE after the Week 3 Task 4 replicate-divergence fix: this accuracy dropped
+from an earlier 87.9% to 75.8%, and that's a real, understood trade-off, not a
+regression to quietly work around. Making the synthetic data's divergence rate
+match real chips (see Task4_Replicate_Divergence_Investigation.md) shrank
+FAILURE to a training-set minority (13/155 rows) -- weak-signal/DEFECTIVE_CHIP
+curves are the ones most prone to replicate sign-flips under the new jitter, so
+they get swept into DIVERGENT_REPLICATES disproportionately. Class-weighted loss
+plus the epoch-extended tuning above recovered most of the gap (51.5% -> 69.7% ->
+75.8% across three fix attempts, each kept and documented rather than only the
+final number shown). The gatekeeper (Task 1) held at 100% through the same data
+change because it isn't blanking early_displacement_30s on divergence anymore
+either (see that model's own updated docstring) -- it still has a near-perfect
+continuous feature to lean on. This model has to read curve SHAPE for a class
+that's now genuinely under-represented, which is a harder problem, honestly
+reflected in a lower number rather than hidden behind further tuning.

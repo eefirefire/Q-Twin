@@ -152,6 +152,48 @@ K_OBS_JITTER = 0.05  # /s, uniform +/-
 SECONDARY_DRIFT_STEP_STD = 0.6   # Hz per sampling step
 SECONDARY_DRIFT_PULL = 0.03      # mean-reversion strength per step
 
+# Week 3 Task 4 fix (see Task4_Replicate_Divergence_Investigation.md): real
+# replicate pairs behave like two physically independent immobilization
+# spots, not two noisy readings of one shared binding event. Before this,
+# both replicates of a synthetic chip were generated from the SAME
+# final_delta_f target, diverging only through independent per-timestep
+# noise/drift -- which flips sign at the 30s read only 4% of the time,
+# vs. 38% for real replicate pairs (see the investigation doc for the
+# full evidence). REPLICATE_KINETIC_JITTER_STD gives each replicate its
+# own independent target value (chip_final_value + N(0, this_std)) before
+# generating its curve, so replicates can diverge kinetically, not just
+# through noise. Calibrated numerically (see calibrate_replicate_jitter.py,
+# not committed -- a one-off sweep script) against two targets
+# simultaneously: (a) probe-stage sign-flip rate at t=30s should land near
+# the real 38.1% (8/21), and (b) the two REQUIRED K-S tests in
+# assemble_batch.py must still pass, since jitter also widens the
+# true_endpoint_delta_f population (each chip's value is still the mean of
+# its 2 jittered replicates, so the chip-level population mean is
+# unbiased, but its variance grows slightly).
+REPLICATE_KINETIC_JITTER_STD = 50.0  # Hz -- calibrated via a two-stage sweep
+# against the probe stage, checking BOTH required K-S tests every time
+# (not just divergence rate): (1) an initial 10-110 Hz sweep against only
+# the endpoint K-S test found ~68 Hz matched the real sign-flip/divergence
+# rate best, but that pass ALSO exposed a pre-existing, previously-masked
+# inconsistency -- synthetic early_displacement_30s was NaN'd out on
+# DIVERGENT_REPLICATES while real data always averages regardless of
+# concordance (see check_replicate_concordance()'s docstring above), so
+# rising divergence rate was shrinking the synthetic biomarker K-S sample
+# into an increasingly biased "happened to agree" subset and failing that
+# test outright (p<0.002) at every nonzero jitter tried. Fixed that
+# inconsistency first (check_replicate_concordance now always returns the
+# mean, matching real data's own convention), then re-swept 42-58 Hz with
+# 5 seeds each, checking both required tests' worst-case p-value: 50 Hz
+# lands divergence rate at 57.2% (real: 57.1-63.6% across the two
+# biomarker definitions in the investigation doc) with comfortable K-S
+# margins (p_endpoint >= 0.13, p_biomarker >= 0.26 across seeds).
+
+
+def jitter_replicate_final_value(final_value: float, rng: np.random.Generator) -> float:
+    """Independent per-replicate deviation from a chip's shared target
+    value -- see REPLICATE_KINETIC_JITTER_STD above for why this exists."""
+    return final_value + rng.normal(0.0, REPLICATE_KINETIC_JITTER_STD)
+
 
 def sample_duration(rng: np.random.Generator) -> float:
     """Sample a realistic curve duration from the real distribution's
@@ -358,12 +400,27 @@ def sample_background_soup_final_value(rng: np.random.Generator) -> float:
 def check_replicate_concordance(rate_or_value_r1: float, rate_or_value_r2: float,
                                  tolerance: float = C.REPLICATE_CONCORDANCE_RELATIVE_TOLERANCE):
     """Task 4 / Eva's Q7: same rule implemented in ingest_raw_curves.py for
-    real data. Returns (averaged_value_or_nan, status_string).
-    'Agree' = same sign AND relative difference |a-b|/max(|a|,|b|) <= tolerance."""
+    real data. Returns (averaged_value, status_string).
+    'Agree' = same sign AND relative difference |a-b|/max(|a|,|b|) <= tolerance.
+
+    NOTE (Week 3 Task 4 follow-up fix): this used to return NaN for the
+    value on DIVERGENT_REPLICATES. That silently diverged from real data's
+    own convention -- ingest_raw_curves.py's early_displacement_30s always
+    averages both replicates regardless of concordance status, using
+    displacement_replicate_status only as a separate caveat flag, never as
+    a reason to null the value. The mismatch was invisible while synthetic
+    divergence was rare (~12%), but once REPLICATE_KINETIC_JITTER_STD made
+    divergence realistically common (~60%+), it meant the synthetic
+    early_displacement_30s POPULATION being K-S-tested against real was a
+    shrinking, biased "replicates happened to agree" subsample instead of
+    the full population real data reports -- which broke the required
+    biomarker K-S test even though the underlying divergence-rate fix was
+    correct. Fixed by always returning the mean here too, matching real
+    data's convention exactly; status_string (and downstream is_divergent
+    flags) still carry the concordance information separately."""
     a, b = rate_or_value_r1, rate_or_value_r2
     same_sign = (a >= 0) == (b >= 0)
     denom = max(abs(a), abs(b))
     rel_diff = abs(a - b) / denom if denom > 0 else 0.0
-    if not same_sign or rel_diff > tolerance:
-        return np.nan, "DIVERGENT_REPLICATES"
-    return float((a + b) / 2.0), "CONCORDANT"
+    status = "DIVERGENT_REPLICATES" if (not same_sign or rel_diff > tolerance) else "CONCORDANT"
+    return float((a + b) / 2.0), status

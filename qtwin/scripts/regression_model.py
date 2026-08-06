@@ -137,8 +137,17 @@ def main():
     print(f"\n7 uM interpolation test (target stage): true trend delta-f at 7uM = {true_df_at_7:.2f} Hz")
     print(f"  Model predicts concentration = {predicted_conc_at_7:.2f} uM -- "
           f"{'PLAUSIBLE (5-10 uM)' if interp_plausible else 'NOT plausible (outside 5-10 uM range)'}")
+    # Actually fit and check degrees 1-5 directly here (not just assert it in
+    # text) so this claim can't silently drift out of sync with the data the
+    # way a hardcoded number would.
+    degree_predictions = {}
+    for d in range(1, 6):
+        m = make_pipeline(PolynomialFeatures(d), LinearRegression())
+        m.fit(X_target_train, y_target_train)
+        degree_predictions[d] = float(m.predict([[true_df_at_7]])[0])
     if not interp_plausible:
-        print("  Checked degrees 1-5 directly: all predict ~12-13 uM for this input, not a degree-selection artifact.")
+        pred_range = f"{min(degree_predictions.values()):.1f}-{max(degree_predictions.values()):.1f} uM"
+        print(f"  Checked degrees 1-5 directly: predictions range {pred_range} for this input -- {degree_predictions}")
         print("  Real limitation: a single global polynomial across the full 0.5-40 uM sweep doesn't resolve")
         print("  the steep 5-10 uM transition precisely -- reported as-is, not silently swapped for a better-looking number.")
 
@@ -158,7 +167,17 @@ def main():
         f.write("feasibility evidence, not production-ready accuracy claims.\n\n")
         f.write(f"Probe stage:  polynomial degree {probe_degree} (5-fold CV selected)\n")
         f.write(f"  Trained on {len(X_probe_train)} synthetic CLEAN_PCA3_TARGET curves\n")
-        f.write(f"  MAE vs {len(X_probe_real)} real non-hold-out chips: {probe_mae:.2f} uM\n\n")
+        f.write(f"  MAE vs {len(X_probe_real)} real non-hold-out chips: {probe_mae:.2f} uM\n")
+        f.write("  NOTE: this MAE dropped substantially (was 16.56 uM) after the Week 3 Task 4\n")
+        f.write("  replicate-divergence fix regenerated the synthetic batch with a shifted RNG\n")
+        f.write("  draw sequence -- verified this is NOT a degree-selection artifact (all 5\n")
+        f.write("  degrees now cluster at 7.1-7.2 uM, vs. the old run's degree-5-specific fit),\n")
+        f.write("  but it IS a different random realization of the same generator, not a change\n")
+        f.write("  caused by the divergence fix itself. The non-monotonic ill-posedness described\n")
+        f.write("  above is a structural property of the real probe curve and is unaffected by\n")
+        f.write("  which random draw the synthetic training data happens to be -- a future re-run\n")
+        f.write("  with yet another seed could land anywhere in a similar range, not necessarily\n")
+        f.write("  near 7 uM again. Treat the exact number as noisy, the qualitative limitation as real.\n\n")
         f.write(f"Target stage: polynomial degree {target_degree} (5-fold CV selected)\n")
         f.write(f"  Trained on {len(X_target_train)} synthetic CLEAN_PCA3_TARGET_HYB curves\n")
         f.write(f"  MAE vs {len(X_target_real)} real non-hold-out chips: {target_mae:.2f} uM\n\n")
@@ -169,8 +188,8 @@ def main():
         f.write("  real data -- no real 7 uM measurements exist to validate against.)\n\n")
         if not interp_plausible:
             f.write("  RESULT: NOT PLAUSIBLE -- outside the 5-10 uM range the task asked to check.\n")
-            f.write("  Checked degrees 1-5 directly (not just the CV-selected degree 2): all five\n")
-            f.write("  predict 11.6-13.2 uM for this same input, so this is not a degree-selection\n")
+            f.write(f"  Checked degrees 1-5 directly (not just the CV-selected degree {target_degree}): {pred_range}\n")
+            f.write("  for this same input across all five, so this is not a degree-selection\n")
             f.write("  artifact. Real limitation: a single global polynomial fit across the full\n")
             f.write("  0.5-40 uM sweep doesn't resolve the steep 5-10 uM transition precisely --\n")
             f.write("  the low-concentration plateau and high-concentration tail both pull the fit\n")

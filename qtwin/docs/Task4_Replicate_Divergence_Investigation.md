@@ -1,8 +1,11 @@
 # Week 3 Task 4: Why real replicates diverge so much more than synthetic ones
 
-**Author:** Evin (solo, Eva out until Sunday). Data-driven investigation, not a
-fix -- see Recommendation at the end for why a fix is deferred rather than
-silently applied.
+**Author:** Evin (solo, Eva out until Sunday). Originally written as an
+investigation with the fix deferred pending Eva's sign-off; **updated
+2026-08-06 after Eva's Week 3 review explicitly authorized implementing it
+now** ("that's a technical call, not a biology one... you're not asking
+permission first, just showing the work like always"). The fix described
+below IS implemented as of this update -- see "Implementation" at the end.
 
 ## The gap, re-measured directly (not from memory)
 
@@ -88,22 +91,62 @@ early-timepoint replicate-pair spread.
   asked: *why does the synthetic generator not reproduce that rate*, which is a
   generator-design gap, not a threshold-tuning question.
 
-## Recommendation (not implemented this pass)
+## Implementation (2026-08-06)
 
-The generator would need per-replicate kinetic variability, not just
-per-replicate noise on a shared trend -- e.g. drawing `k_obs` (and possibly a
-fraction of `final_value` itself) independently per replicate rather than once
-per chip, with the independent component sized large enough to occasionally
-flip sign at the 30s read. That's a change to `curve_generator.py`'s core
-generation function, which would regenerate `probe_synthetic_batch.csv` /
-`target_synthetic_batch.csv` and everything downstream of them (the two K-S
-tests, the gatekeeper, the regression models, the LSTM, and the hold-out
-split's proportions).
+Implemented as `curve_generator.jitter_replicate_final_value()`: each
+replicate now gets its own independent target value (`final_value + N(0,
+REPLICATE_KINETIC_JITTER_STD)`) before its curve is generated, instead of
+both replicates sharing one chip-level `final_value`. Applied in both
+`generate_probe_batch.py` and `generate_target_batch.py`'s
+`make_replicate_pair()`.
 
-Given how much of Weeks 2-3 has already been built and validated on top of the
-current batch, and that Eva is out until Sunday, this is flagged as a
-recommendation for a deliberate, sign-off'd regeneration rather than something
-to silently change mid-Task-4. If Eva/the teacher confirm this read is right,
-the concrete next step would be a new `--replicate-kinetic-jitter` parameter on
-`generate_association_curve`/`generate_baseline_drift_curve`, re-validated with
-the same K-S tests before anything downstream is retrained on it.
+**`REPLICATE_KINETIC_JITTER_STD` calibration.** Swept 10-110 Hz, checking
+organic (non-forced) divergence rate and the two required K-S tests
+(`assemble_batch.py`) at every value:
+
+- A first pass matched the target divergence rate well (~68 Hz) but broke the
+  **biomarker** K-S test outright (p<0.002 at every nonzero jitter tried).
+  Root cause turned out to be a separate, pre-existing inconsistency this
+  investigation surfaced rather than caused: synthetic
+  `early_displacement_30s` was `NaN` on `DIVERGENT_REPLICATES`
+  (`check_replicate_concordance()` returned `np.nan`), while real data's own
+  `early_displacement_30s` always averages both replicates regardless of
+  concordance status (`ingest_raw_curves.py` uses `.mean()` unconditionally,
+  with `displacement_replicate_status` as a separate caveat column, never a
+  reason to null the value). That mismatch was invisible while synthetic
+  divergence was rare (~12%), but once jitter made divergence realistically
+  common, the synthetic biomarker K-S sample shrank into an increasingly
+  biased "replicates happened to agree" subset and failed against real data's
+  full, unbiased population.
+- Fixed `check_replicate_concordance()` to always return the mean (matching
+  real data's convention exactly), then re-swept 42-58 Hz with 5 seeds each,
+  checking both required tests' worst-case p-value every time.
+
+**Final value: `REPLICATE_KINETIC_JITTER_STD = 50.0` Hz.** Organic divergence
+rate on the actual regenerated batches: **57.6%** (probe), **64.2%** (target)
+-- both land inside the real 57.1-63.6% range this investigation measured.
+K-S validation (`ks_validation_report.txt`): both required tests PASS
+(probe delta_f p=0.16, biomarker p=0.26).
+
+**Downstream effects, tracked honestly rather than only reporting the fix
+itself:**
+- **Gatekeeper (Task 1):** unaffected, still 100% on real validation --
+  it's no longer leaning on a NaN-encodes-divergence shortcut either (see its
+  updated docstring), and the underlying `early_displacement_30s` signal is
+  still strong enough on its own.
+- **Regression (Task 2):** probe-stage MAE dropped from 16.56 to ~7.1 uM
+  across all 5 polynomial degrees -- verified this is a side effect of the
+  regenerated data's different RNG draw (shifted by the new per-replicate
+  jitter call), not evidence the non-monotonicity problem went away; the
+  qualitative ill-posedness is still real and still documented in
+  `regression_metrics.txt`.
+- **LSTM (Task 3):** accuracy dropped from 87.9% to 51.5% initially --
+  matching the real divergence rate shrank `FAILURE` to 13/155 training rows
+  (weak-signal/`DEFECTIVE_CHIP` curves are the ones most prone to sign-flips
+  under the new jitter, so they get swept into `DIVERGENT_REPLICATES`
+  disproportionately). Added class-weighted loss (matching the gatekeeper's
+  `class_weight="balanced"`) and extended the internal-tuning-split sweep to
+  cover `epochs` as well as `hidden_size` -- recovered to 75.8%, still below
+  the pre-fix 87.9% but a real, understood, honestly-reported number, not
+  patched by peeking at real-validation accuracy to choose hyperparameters.
+  Full detail in `lstm_metrics.txt`.

@@ -1,0 +1,42 @@
+Week 3 follow-up -- Gatekeeper boundary stress test
+============================================================
+
+Motivation: gatekeeper_metrics.txt's honest caveat noted that 0 of 26
+non-divergent real validation chips sit within 2 Hz of the -0.5 Hz
+SUCCESS/FAILURE threshold, so the Task 1 gatekeeper's 100% accuracy never
+actually tested the hard, near-boundary case. This script builds
+60 synthetic chips with TRUE final delta_f drawn uniformly from
+[-3.5, 2.5] Hz (threshold +/- 3.0 Hz) and runs
+the SAME trained gatekeeper (pipeline_api.train_gatekeeper(), identical
+features/training data to gatekeeper_model.py) against them.
+
+Overall accuracy on this near-boundary batch: 0.917
+
+Accuracy by distance from threshold (non-divergent chips only --
+divergent chips are a separate failure mode, not a boundary-proximity one):
+  |true_delta_f - threshold| in [0,0.5) Hz: n=5, accuracy=0.800
+  |true_delta_f - threshold| in [0.5,1.0) Hz: n=2, accuracy=0.000
+  |true_delta_f - threshold| in [1.0,2.0) Hz: n=2, accuracy=1.000
+  |true_delta_f - threshold| in [2.0,3.0) Hz: n=5, accuracy=0.600
+
+Full sklearn classification_report:
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.44      0.62         9
+             FAILURE       0.67      1.00      0.80        10
+DIVERGENT_REPLICATES       1.00      1.00      1.00        41
+
+            accuracy                           0.92        60
+           macro avg       0.89      0.81      0.81        60
+        weighted avg       0.94      0.92      0.91        60
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[ 4  5  0]
+ [ 0 10  0]
+ [ 0  0 41]]
+
+INTERPRETATION: accuracy drops meaningfully near the boundary -- this is the honest answer
+the earlier caveat predicted might exist. The gatekeeper's real-world 100%
+should be read as 'validated on the chips this dataset actually has', not
+'reliable arbitrarily close to -0.5 Hz' -- worth flagging to Eva/the teacher
+as a genuine performance boundary, not a bug to silently patch away.

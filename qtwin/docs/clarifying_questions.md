@@ -177,21 +177,24 @@ item 8, which is now the most important open question in this list.**
     Eva's input on the underlying +63.49 Hz number when she's back; not
     blocking Week 3's start in the meantime.
 
-16. **OPEN -- Week 3 Task 4: why the synthetic generator doesn't reproduce
-    real replicates' ~57-64% divergence rate.** Full writeup:
-    `Task4_Replicate_Divergence_Investigation.md`. Short version: real probe
-    replicate pairs flip SIGN at the 30s read 38% of the time (8/21) vs. only
-    4% for organic (non-forced) synthetic pairs -- because
-    `generate_probe_batch.py` gives both replicates of a chip the same
+16. **IMPLEMENTED (2026-08-06, Eva authorized the call directly) -- Week 3
+    Task 4 generator fix.** Full writeup: `Task4_Replicate_Divergence_Investigation.md`.
+    Root cause: real probe replicate pairs flip SIGN at the 30s read 38% of
+    the time (8/21) vs. only 4% for organic (non-forced) synthetic pairs --
+    `generate_probe_batch.py` gave both replicates of a chip the same
     `final_value`/trend and only independent *noise* on top, while real
-    replicates behave like two physically independent binding events with
-    their own kinetics. Not a concordance-rule bug (same rule, same threshold,
-    applied identically both places) and not a re-litigation of item 12's
-    "is 64% real or is the threshold too strict" question -- this is the
-    separate, narrower finding that the generator's noise model is the gap.
-    Recommended fix (independent per-replicate k_obs jitter, not just
-    per-replicate noise) is NOT implemented yet -- it would require
-    regenerating both synthetic batches and re-running everything downstream
-    (K-S tests, gatekeeper, regression, LSTM, hold-out split), so it's left as
-    a flagged recommendation pending Eva/the teacher's sign-off rather than
-    done unilaterally mid-Task-4.
+    replicates behave like two physically independent binding events. Fixed
+    via `curve_generator.jitter_replicate_final_value()` (each replicate now
+    gets an independently jittered target value, `REPLICATE_KINETIC_JITTER_STD
+    = 50.0` Hz, calibrated by sweep). Fixing this also surfaced and required
+    fixing a second, previously-masked inconsistency: synthetic
+    `early_displacement_30s` used to null out on divergence while real data
+    never does, which broke the biomarker K-S test once divergence became
+    common (see the investigation doc's "Implementation" section for the
+    full chain). Regenerated both synthetic batches: both required K-S tests
+    still pass, organic divergence rate now 57.6% (probe) / 64.2% (target),
+    matching the real 57.1-63.6% range. Downstream: gatekeeper unaffected
+    (100%), regression's probe MAE changed as a side effect of the new RNG
+    draw (documented, not a causal improvement), LSTM dropped from 87.9% to
+    75.8% after class-weighting/retuning to compensate for FAILURE becoming a
+    training-set minority -- a real, honestly-reported trade-off, not hidden.

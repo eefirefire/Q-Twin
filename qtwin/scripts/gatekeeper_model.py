@@ -8,14 +8,18 @@ replicate-concordance status (secondary feature). Validates against the
 33 non-hold-out real chips (44 valid - 11 reserved in Week 2 Task 6 --
 explicitly NOT touched here, per this week's plan: "save that for later").
 
-Design note worth being explicit about: early_displacement_30s is NULL
-exactly when concordance status is DIVERGENT_REPLICATES (that's the whole
-point of the concordance rule -- a corrupted average never gets computed).
-So the "is_divergent" feature isn't incidental context, it's doing real
-work identifying that class, while early_displacement_30s does the real
-work distinguishing SUCCESS from FAILURE among the concordant/
-single-replicate chips. That's the intended architecture per the task
-spec ("primary feature ... plus ... secondary input"), not label leakage.
+Design note worth being explicit about, UPDATED after the Week 3 Task 4
+generator fix: early_displacement_30s used to be NULL exactly when
+concordance status was DIVERGENT_REPLICATES for synthetic data. That's no
+longer true -- curve_generator.check_replicate_concordance() now always
+returns the averaged value (matching real data's own convention, which
+never nulled it either; see that function's docstring for why). So
+early_displacement_30s is populated for every row now, real or synthetic,
+divergent or not. "is_divergent" is still a real, separate feature (not
+redundant with the averaged value), but it's no longer the ONLY thing
+identifying that class the way it was when the value was blanked out --
+worth re-reading feature_importances_ below after this change rather than
+assuming the old reasoning still holds.
 
 Output: gatekeeper_model.py (this file), qtwin/models/gatekeeper_confusion_matrix.png,
 qtwin/models/gatekeeper_metrics.txt
@@ -54,10 +58,10 @@ def build_label(success_or_fail: str, concordance_status: str) -> str:
 
 def build_features(df: pd.DataFrame, displacement_col: str, status_col: str) -> pd.DataFrame:
     feat = pd.DataFrame(index=df.index)
-    # Primary feature: early_displacement_30s. NaN exactly when divergent --
-    # imputed to 0 so the model doesn't choke on missing values, but the
-    # is_divergent flag (not this imputed 0) is what actually identifies
-    # that class; 0 is an arbitrary placeholder, not a meaningful signal.
+    # Primary feature: early_displacement_30s (see the module docstring's
+    # UPDATED note -- no longer NaN on divergence for either real or
+    # synthetic data, so fillna here is now just a defensive no-op, not
+    # load-bearing imputation).
     feat["early_displacement_30s"] = df[displacement_col].fillna(0.0)
     feat["is_divergent"] = (df[status_col] == "DIVERGENT_REPLICATES").astype(int)
     return feat
