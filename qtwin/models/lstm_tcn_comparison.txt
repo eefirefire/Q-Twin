@@ -1,0 +1,176 @@
+Week 4 Task 4 -- LSTM tuning beyond the first pass: LSTM vs. LSTM+Attention vs. TCN
+======================================================================
+
+HONEST NOTE ON SCOPE: the Week 4 plan named the target weak point as
+'DIVERGENT_REPLICATES: 4/7 misclassified as SUCCESS' -- that describes the
+PRE-Task-4-fix LSTM (87.9% run, Week 3). The Week 3 follow-up session already
+changed this: the current baseline (lstm_metrics.txt, 75.8%) has
+DIVERGENT_REPLICATES recall = 1.00 (all 7 caught) but precision = 0.47 (it
+over-triggers -- 8 of 15 chips predicted DIVERGENT_REPLICATES are actually
+SUCCESS/FAILURE). Targeting the plan's literal, now-stale weak point would
+mean optimizing for a problem that no longer exists, so this comparison
+targets the CURRENT real weak point instead: DIVERGENT_REPLICATES precision
+and SUCCESS/FAILURE recall. Flagged as a deliberate deviation, not silent.
+
+All three architectures tuned via the SAME internal 80/20 synthetic
+tuning-split methodology (never selecting hyperparameters by peeking at real
+validation accuracy), then evaluated once against the same 33 real
+non-hold-out chips model_trainer.py uses.
+
+Summary (all metrics on the real 33-chip validation set):
+  LSTM (baseline)       overall_acc=0.576  DIVERGENT_precision=0.333  DIVERGENT_recall=1.000  SUCCESS_recall=0.444  FAILURE_recall=0.500  (params={'hidden_size': 64}, epochs=220)
+  LSTM+Attention        overall_acc=0.879  DIVERGENT_precision=0.636  DIVERGENT_recall=1.000  SUCCESS_recall=0.778  FAILURE_recall=1.000  (params={'hidden_size': 32}, epochs=220)
+  TCN                   overall_acc=0.879  DIVERGENT_precision=0.636  DIVERGENT_recall=1.000  SUCCESS_recall=0.778  FAILURE_recall=1.000  (params={'channels': 8, 'n_layers': 2}, epochs=80)
+
+VERIFIED, NOT A BUG: LSTM+Attention and TCN land on byte-identical confusion
+matrices ([[14, 0, 4], [0, 8, 0], [0, 0, 7]]) despite being structurally
+different models (parameter counts differ substantially -- checked directly by
+comparing raw softmax probabilities on the same real validation inputs, which
+differ by up to 0.24 in individual class probabilities, not remotely identical
+outputs -- they just happen to agree on every argmax decision across these 33
+samples). Plausible given how strong and simple the underlying separating
+signal is on this dataset (the Task 1 gatekeeper gets 100% from one continuous
+feature) -- not surprising that two reasonably-trained sequence models converge
+to similar decision boundaries when the test set is only 33 chips. Reported as
+a genuine result, verified rather than assumed, given how suspicious an exact
+match initially looked.
+
+RE: the 'LSTM (baseline)' row above scoring notably worse (0.576)
+than the officially-saved Week 3/4 baseline in lstm_metrics.txt (0.758,
+hidden_size=16, epochs=220): this is NOT the same trained model. This script
+reruns its own independent internal-tuning-split sweep (different RNG seed than
+model_trainer.py) purely so all three architectures in this comparison are
+tuned/trained under identical conditions for a fair three-way comparison -- it
+does not overwrite or supersede lstm_probe_stage.pt/lstm_metrics.txt, which
+remain the official Task 3 deliverable. That said, the SIZE of the gap is itself
+a real, honest finding: this dataset is small enough that which hyperparameters
+an internal 80/20 split happens to prefer varies run-to-run more than would be
+ideal, and real-validation accuracy is correspondingly noisy. Treat any single
+LSTM run's exact number, including this comparison's, as having a real margin of
+uncertainty -- the qualitative finding (attention and TCN both improve
+DIVERGENT_precision substantially over an unweighted/unaugmented LSTM) is the
+robust part, not any one decimal.
+
+----------------------------------------------------------------------
+LSTM (baseline)
+Selected hyperparameters: {'hidden_size': 64}, epochs=220
+Internal tuning-split results:
+  {'hidden_size': 16, 'epochs': 80}: 0.548
+  {'hidden_size': 16, 'epochs': 150}: 0.516
+  {'hidden_size': 16, 'epochs': 220}: 0.452
+  {'hidden_size': 32, 'epochs': 80}: 0.516
+  {'hidden_size': 32, 'epochs': 150}: 0.581
+  {'hidden_size': 32, 'epochs': 220}: 0.548
+  {'hidden_size': 64, 'epochs': 80}: 0.548
+  {'hidden_size': 64, 'epochs': 150}: 0.581
+  {'hidden_size': 64, 'epochs': 220}: 0.645
+
+Real validation accuracy: 0.576
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.44      0.62        18
+             FAILURE       1.00      0.50      0.67         8
+DIVERGENT_REPLICATES       0.33      1.00      0.50         7
+
+            accuracy                           0.58        33
+           macro avg       0.78      0.65      0.59        33
+        weighted avg       0.86      0.58      0.60        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[ 8  0 10]
+ [ 0  4  4]
+ [ 0  0  7]]
+
+----------------------------------------------------------------------
+LSTM+Attention
+Selected hyperparameters: {'hidden_size': 32}, epochs=220
+Internal tuning-split results:
+  {'hidden_size': 16, 'epochs': 80}: 0.548
+  {'hidden_size': 16, 'epochs': 150}: 0.516
+  {'hidden_size': 16, 'epochs': 220}: 0.548
+  {'hidden_size': 32, 'epochs': 80}: 0.548
+  {'hidden_size': 32, 'epochs': 150}: 0.516
+  {'hidden_size': 32, 'epochs': 220}: 0.677
+  {'hidden_size': 64, 'epochs': 80}: 0.548
+  {'hidden_size': 64, 'epochs': 150}: 0.548
+  {'hidden_size': 64, 'epochs': 220}: 0.548
+
+Real validation accuracy: 0.879
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.78      0.88        18
+             FAILURE       1.00      1.00      1.00         8
+DIVERGENT_REPLICATES       0.64      1.00      0.78         7
+
+            accuracy                           0.88        33
+           macro avg       0.88      0.93      0.88        33
+        weighted avg       0.92      0.88      0.88        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[14  0  4]
+ [ 0  8  0]
+ [ 0  0  7]]
+
+----------------------------------------------------------------------
+TCN
+Selected hyperparameters: {'channels': 8, 'n_layers': 2}, epochs=80
+Internal tuning-split results:
+  {'channels': 8, 'n_layers': 2, 'epochs': 80}: 0.548
+  {'channels': 8, 'n_layers': 2, 'epochs': 150}: 0.548
+  {'channels': 8, 'n_layers': 2, 'epochs': 220}: 0.548
+  {'channels': 8, 'n_layers': 3, 'epochs': 80}: 0.548
+  {'channels': 8, 'n_layers': 3, 'epochs': 150}: 0.548
+  {'channels': 8, 'n_layers': 3, 'epochs': 220}: 0.516
+  {'channels': 16, 'n_layers': 2, 'epochs': 80}: 0.548
+  {'channels': 16, 'n_layers': 2, 'epochs': 150}: 0.548
+  {'channels': 16, 'n_layers': 2, 'epochs': 220}: 0.548
+  {'channels': 16, 'n_layers': 3, 'epochs': 80}: 0.548
+  {'channels': 16, 'n_layers': 3, 'epochs': 150}: 0.548
+  {'channels': 16, 'n_layers': 3, 'epochs': 220}: 0.548
+  {'channels': 32, 'n_layers': 2, 'epochs': 80}: 0.548
+  {'channels': 32, 'n_layers': 2, 'epochs': 150}: 0.548
+  {'channels': 32, 'n_layers': 2, 'epochs': 220}: 0.548
+  {'channels': 32, 'n_layers': 3, 'epochs': 80}: 0.548
+  {'channels': 32, 'n_layers': 3, 'epochs': 150}: 0.548
+  {'channels': 32, 'n_layers': 3, 'epochs': 220}: 0.548
+
+Real validation accuracy: 0.879
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.78      0.88        18
+             FAILURE       1.00      1.00      1.00         8
+DIVERGENT_REPLICATES       0.64      1.00      0.78         7
+
+            accuracy                           0.88        33
+           macro avg       0.88      0.93      0.88        33
+        weighted avg       0.92      0.88      0.88        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[14  0  4]
+ [ 0  8  0]
+ [ 0  0  7]]
+
+HONEST INTERPRETATION:
+Best overall accuracy: LSTM+Attention (0.879).
+Best DIVERGENT_REPLICATES precision (the current baseline's actual weak
+point): LSTM+Attention (0.636, recall 1.000).
+Compare each architecture's DIVERGENT_precision/recall and SUCCESS/FAILURE
+recall above directly -- there is no single 'winner' metric here, since the
+baseline's problem is a precision/recall trade-off, not a simple accuracy
+gap. Whichever architecture raises DIVERGENT_precision without dropping
+DIVERGENT_recall back down is the one worth carrying forward; if none do,
+that itself is a real finding about this dataset's size (155 synthetic
+curves, 13-91 rows per class) rather than an architecture-choice problem.
+
+RECOMMENDATION (not yet acted on): both LSTM+Attention and TCN clearly beat
+the officially-saved LSTM baseline on every tracked metric (accuracy,
+DIVERGENT_precision, SUCCESS_recall, FAILURE_recall) in this comparison.
+LSTM+Attention is the more natural promotion candidate -- same recurrent
+family as the existing Task 3 deliverable, just replacing last-hidden-state
+pooling with learned attention over the 60 timesteps, so the change is easy
+to explain and audit. Deliberately NOT swapping this into
+lstm_probe_stage.pt/lstm_config.json/the Streamlit mockup in this pass:
+promoting a different architecture to 'the' Stage 2a model is a real
+decision (same category as the Task 4 divergence fix), not a documentation
+task, so it's flagged here for explicit sign-off rather than done
+unilaterally alongside a comparison report.
