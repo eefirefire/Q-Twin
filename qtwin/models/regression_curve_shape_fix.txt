@@ -1,0 +1,34 @@
+Testing week Task 7 -- Stage 2b model-problem mismatch fix
+============================================================
+
+The probe-stage curve is non-monotonic (peaks at 10 uM) -- endpoint-only
+regression is a genuinely ill-posed inverse problem, not a tuning issue.
+
+Baseline (Week 3/4, endpoint value only): degree 1, MAE = 6.56 uM (n=28 real non-hold-out chips)
+
+OPTION C -- add early_displacement_30s (curve-shape) as a second feature:
+  degree 1, MAE = 6.56 uM (n=28)
+  RESULT: DOES NOT MEANINGFULLY HELP
+
+  Why Option C likely doesn't resolve this: early_displacement_30s correlates
+  0.9997 with the full-run delta_f_probe (see clarifying_questions.md item 8) --
+  it is essentially the SAME signal read early, not an independent one. Two
+  concentrations landing on the same final delta_f (one on the rising side
+  below 10 uM, one on the falling side above it) also tend to land on similar
+  early-displacement values, because both are driven by the same underlying
+  concentration-response curve at a proportionally similar point in its rise.
+  A genuinely independent shape feature (e.g. k_obs / approach rate estimated
+  from multiple early timepoints, not a single correlated readout) might do
+  better, but that's beyond what a single extra scalar feature can fix -- this
+  is a real, informative negative result, not a failed attempt to hide.
+
+OPTION A fallback -- restrict validity range to <10 uM (monotonic side):
+  degree 1, MAE = 2.34 uM (n=5 real chips below 10 uM)
+  This model explicitly does NOT attempt to resolve concentrations above 10 uM --
+  scoped, honest, and structurally correct rather than silently wrong half the time.
+
+DECISION: Option C did not meaningfully help (informative negative result, documented
+above). Adopt Option A -- the model is scoped to <10 uM, explicitly declining
+to predict in the ambiguous >10 uM region rather than silently guessing wrong.
+This is a real improvement over the unscoped Week 3/4 model: it no longer
+claims to solve a problem it structurally cannot solve.

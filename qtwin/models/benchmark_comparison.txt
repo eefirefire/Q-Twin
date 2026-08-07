@@ -1,0 +1,27 @@
+Testing week Task 3 -- lightweight benchmarking
+============================================================
+
+Random Forest on the same 60-point resampled probe curves as the LSTM,
+just flattened into 60 independent features (no sequential processing) --
+same synthetic training data, same 33-chip real validation set, same
+hold-out exclusion, same class-balancing approach as the gatekeeper's RF.
+
+Random Forest (flattened curve):  accuracy = 0.515
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.56      0.71        18
+             FAILURE       0.00      0.00      0.00         8
+DIVERGENT_REPLICATES       0.30      1.00      0.47         7
+
+            accuracy                           0.52        33
+           macro avg       0.43      0.52      0.39        33
+        weighted avg       0.61      0.52      0.49        33
+Confusion matrix: [[10, 0, 8], [0, 0, 8], [0, 0, 7]]
+
+Official LSTM (lstm_metrics.txt):                    accuracy = 0.758
+Week 4 LSTM+Attention/TCN (lstm_tcn_comparison.txt): accuracy = 0.879
+
+CONCLUSION: the sequence models beat the flattened-feature Random Forest baseline
+(0.515) at every stage -- genuine evidence that treating this as a
+sequence (not just 60 independent numbers) is earning real value, not just
+added complexity.

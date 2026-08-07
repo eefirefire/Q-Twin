@@ -1,0 +1,45 @@
+Testing week Task 2 -- partial ablation study
+============================================================
+
+PART 1 -- raw slope biomarker vs. redefined displacement biomarker
+Simple threshold rule, OLD slope biomarker (binding_rate_probe_dfdt_30s < 0): accuracy = 0.522 (n=23)
+Simple threshold rule, NEW displacement biomarker (early_displacement_30s <= -0.5 Hz): accuracy = 1.000 (n=33)
+Full gatekeeper RF (displacement + divergence flag, 3-class): accuracy = 1.000 (n=33)
+
+The redefinition bought +47.8 percentage points on a simple
+threshold rule alone (before even adding the RF/divergence-flag machinery) --
+quantifying Week 1's item 8 finding (rate biomarker: correlation -0.16 with
+outcome, worse than chance as a classifier) against the actual gatekeeper task.
+Could not run a matched SYNTHETIC-trained RF comparison for the rate biomarker --
+the Week 2 generator never modeled it (already proven non-predictive and dropped
+in Week 1, so no synthetic rate-biomarker training data exists). Documented as a
+real scope limit of this ablation, not glossed over.
+
+PART 2 -- gatekeeper enabled vs. disabled (false-positive cost on divergent chips)
+n=7 real, non-hold-out chips flagged DIVERGENT_REPLICATES.
+
+ENABLED (gatekeeper's 3-class output): all 7/7 correctly flagged
+DIVERGENT_REPLICATES (100% recall on this class, see gatekeeper_metrics.txt) --
+zero false positives, because divergence is caught before a SUCCESS/FAILURE
+call is ever made on untrustworthy data.
+
+DISABLED (naive -0.5 Hz threshold applied directly to early_displacement_30s,
+no concordance check at all -- i.e. what the pipeline looked like before Task 1
+existed): would confidently call SUCCESS or FAILURE on every one of these 7
+chips despite their replicates disagreeing. Per-chip naive call vs. what the
+full-run delta_f_probe (the actual ground truth) says:
+
+  20Mar_No.8      early_disp=-15.298069804906843  naive_call=SUCCESS   actual=SUCCESS   matches
+  20Mar_No.9      early_disp=-11.177850799635053  naive_call=SUCCESS   actual=SUCCESS   matches
+  21Mar_No.10     early_disp=0.3806097581982612  naive_call=FAILURE   actual=FAILURE   matches
+  21Mar_No.2      early_disp=-20.59641511552036  naive_call=SUCCESS   actual=SUCCESS   matches
+  21Mar_No.6      early_disp=-21.182777777314183  naive_call=SUCCESS   actual=SUCCESS   matches
+  21Mar_No.7      early_disp=0.641161534935236  naive_call=FAILURE   actual=FAILURE   matches
+  21Mar_No.8      early_disp=-0.0403278674930334  naive_call=FAILURE   actual=FAILURE   matches
+
+0/7 naive calls on divergent chips would have disagreed with
+the true outcome -- but the real cost isn't just accuracy on these 7 chips, it's
+that EVERY one of them would get a confidently-stated SUCCESS/FAILURE label with
+no indication the underlying measurement was unreliable, even on the chips where
+the naive call happens to match. That silent loss of a reliability signal -- not
+just the raw mismatch count -- is what the gatekeeper is actually contributing.

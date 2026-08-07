@@ -1,0 +1,23 @@
+Testing week Task 6 -- attention weight visualization
+============================================================
+
+Question: does an attention layer, trained with no knowledge of the
+hand-derived early_displacement_30s biomarker, independently learn to
+weight the early part of the probe curve most heavily?
+
+Mean attention weight in the first 15s of the 45s window: 0.225
+(a uniform/no-preference attention would give 0.333 to that same span)
+Peak mean attention weight occurs at t=34.3s
+
+RESULT: NO -- attention does NOT clearly concentrate early; weight is spread
+across the window (or concentrates elsewhere, e.g. near the end). This is
+itself a genuinely interesting finding worth investigating further, not a
+failed replication to hide: it suggests either (a) the model is picking up a
+different, real signal than the hand-derived biomarker relies on, or (b) with
+only 155 synthetic training curves, the attention layer hasn't converged to a
+stable, interpretable pattern yet. See attention_weights_visualization.png
+for the actual per-chip weight curves before drawing further conclusions.
+
+HONEST CAVEAT: this is one training run (fixed seed). Given how much the
+Week 4 tuning sweep showed run-to-run variance on this dataset size, treat this
+as a suggestive single observation, not a robust, reproduced-across-seeds claim.

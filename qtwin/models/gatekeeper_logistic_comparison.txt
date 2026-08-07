@@ -1,0 +1,33 @@
+Testing week Task 4 -- RF vs. Logistic Regression baseline
+============================================================
+
+Same features (early_displacement_30s + is_divergent), same train/val split.
+
+Random Forest:        accuracy = 1.000
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      1.00      1.00        18
+             FAILURE       1.00      1.00      1.00         8
+DIVERGENT_REPLICATES       1.00      1.00      1.00         7
+
+            accuracy                           1.00        33
+           macro avg       1.00      1.00      1.00        33
+        weighted avg       1.00      1.00      1.00        33
+Confusion matrix: [[18, 0, 0], [0, 8, 0], [0, 0, 7]]
+
+Logistic Regression:  accuracy = 0.939
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.89      0.94        18
+             FAILURE       0.80      1.00      0.89         8
+DIVERGENT_REPLICATES       1.00      1.00      1.00         7
+
+            accuracy                           0.94        33
+           macro avg       0.93      0.96      0.94        33
+        weighted avg       0.95      0.94      0.94        33
+Confusion matrix: [[16, 2, 0], [0, 8, 0], [0, 0, 7]]
+
+CONCLUSION: Random Forest outperforms logistic regression (1.000 vs 0.939).
+That's evidence the early_displacement_30s/is_divergent relationship to the
+label isn't purely linear -- worth citing as support for keeping RF, not
+just defaulting to it.

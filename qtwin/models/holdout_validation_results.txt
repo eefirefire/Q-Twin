@@ -1,0 +1,77 @@
+Testing week Task 1 -- BLIND hold-out validation results
+============================================================
+
+The first genuinely blind numbers in this project: the 11 chips below
+were reserved in Week 2 Task 6 and have never been touched by any
+training run, threshold decision, hyperparameter sweep, or architecture
+choice -- unlike the 33-chip validation set, which every design decision
+in Weeks 3-4 was developed and iterated against, even if never directly
+trained on.
+
+Hold-out chips (n=11): ['14Mar_No.5', '14Mar_No.6', '14Mar_No.7', '15Mar_No.17', '15Mar_No.20', '15Mar_No.23', '15Mar_No.24', '20Mar_No.7', '21Mar_No.1', '21Mar_No.3', '21Mar_No.9']
+
+------------------------------------------------------------
+GATEKEEPER (Task 1)
+Hold-out accuracy: 1.000  (33-chip validation accuracy: 1.000)
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      1.00      1.00         5
+             FAILURE       1.00      1.00      1.00         3
+DIVERGENT_REPLICATES       1.00      1.00      1.00         3
+
+            accuracy                           1.00        11
+           macro avg       1.00      1.00      1.00        11
+        weighted avg       1.00      1.00      1.00        11
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[5 0 0]
+ [0 3 0]
+ [0 0 3]]
+
+------------------------------------------------------------
+LSTM (Task 3, official model)
+Hold-out accuracy: 0.455  (33-chip validation accuracy: 0.758)
+                      precision    recall  f1-score   support
+
+             SUCCESS       0.67      0.40      0.50         5
+             FAILURE       1.00      0.33      0.50         3
+DIVERGENT_REPLICATES       0.29      0.67      0.40         3
+
+            accuracy                           0.45        11
+           macro avg       0.65      0.47      0.47        11
+        weighted avg       0.65      0.45      0.47        11
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[2 0 3]
+ [0 1 2]
+ [1 0 2]]
+
+------------------------------------------------------------
+REGRESSION (Task 2)
+Probe-stage hold-out MAE: 3.99 uM (n=11)  (33-chip validation MAE: 7.09 uM)
+Target-stage hold-out MAE: 3.77 uM (n=3)  (33-chip validation MAE: 5.35 uM)
+
+------------------------------------------------------------
+Per-chip detail:
+    chip_id         actual_label      gatekeeper_pred  gatekeeper_correct            lstm_pred  lstm_correct  probe_pred_uM actual_conc_uM
+ 14Mar_No.5              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False      11.891050              5
+ 14Mar_No.6              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False      11.829644              5
+ 14Mar_No.7              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False      11.796689             10
+15Mar_No.17              SUCCESS              SUCCESS                True              SUCCESS          True      11.155276             10
+15Mar_No.20              FAILURE              FAILURE                True              FAILURE          True      12.130746             10
+15Mar_No.23              FAILURE              FAILURE                True DIVERGENT_REPLICATES         False      12.018603             10
+15Mar_No.24              FAILURE              FAILURE                True DIVERGENT_REPLICATES         False      11.992405             10
+ 20Mar_No.7 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True              SUCCESS         False      11.593889             10
+ 21Mar_No.1 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True DIVERGENT_REPLICATES          True      11.870601              1
+ 21Mar_No.3              SUCCESS              SUCCESS                True              SUCCESS          True      11.646553              5
+ 21Mar_No.9 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True DIVERGENT_REPLICATES          True      11.982981             10
+
+------------------------------------------------------------
+HONEST ASSESSMENT:
+Gatekeeper: HOLDS on genuinely blind data (1.000 -> 1.000, gap=+0.000).
+LSTM: DROPS on genuinely blind data (0.758 -> 0.455, gap=+0.303).
+n=11 is a small hold-out set -- treat any single-chip miss as a large swing
+in the reported percentage (each chip is ~9% of the total), not as strong
+statistical evidence on its own. Reported as-is regardless of which
+direction it points, per this project's standing rule of reporting gaps
+plainly rather than only when they're flattering.
