@@ -64,10 +64,14 @@ summarizes, it doesn't replace the originals as the source of truth.
   extensively-iterated-against validation numbers suggested. The single
   most important honest finding of the testing week. *Source:
   `holdout_validation_results.txt`.*
-- **A flattened-feature Random Forest baseline scores only 51.5%** —
-  confirms the sequence architecture (LSTM/attention/TCN) is earning real
-  value over a naive baseline, not just adding complexity. *Source:
-  `benchmark_comparison.txt`.*
+- **A flattened-feature Random Forest baseline, properly tuned, scores
+  63.6%** (max_depth/n_estimators swept via internal split; an earlier
+  untuned version reported 51.5% and was caught understating the
+  baseline's real ceiling during independent review) — still clearly below
+  the official LSTM (75.8%) and LSTM+Attention/TCN (87.9%), confirming the
+  sequence architecture earns real value over a naive baseline, on a
+  fairer/harder-to-challenge comparison than the first version made.
+  *Source: `benchmark_comparison.txt`.*
 - **Attention weights do NOT clearly concentrate in the first 15s**
   (mean weight 0.225 vs. a uniform 0.333) — does not independently confirm
   the Week 1 "first 30 seconds matter most" biomarker insight the way
