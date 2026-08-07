@@ -107,7 +107,7 @@ with col_conc:
     pred_uM = result.get("probe_predicted_uM")
     if pred_uM is not None:
         st.metric("Regressor (Task 2) predicts", f"{pred_uM:.1f} uM")
-        st.caption("Probe-stage polynomial regression (non-monotonic, ill-posed -- see caveat below)")
+        st.caption("Only valid if true concentration < 10 uM (Task 7 fix) -- not verifiable from the reading alone")
     else:
         st.metric("Regressor (Task 2) predicts", "n/a")
 

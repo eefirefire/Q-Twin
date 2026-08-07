@@ -46,12 +46,40 @@ def train_gatekeeper() -> RandomForestClassifier:
 
 
 def train_regression_models():
-    """Same fit as regression_model.py's train_and_report(), minus the plot."""
+    """Probe stage: Testing week Task 7's adopted fix (Option A), NOT the
+    original Week 3/4 unscoped model. This was found missing during an
+    independent review -- Task 7's regression_curve_shape_fix.py concluded
+    "adopt Option A" (restrict the probe regressor to <10 uM, where the
+    concentration-response curve is genuinely monotonic) but that decision
+    was never wired in here, so the Streamlit mockup and
+    holdout_validation.py were both silently still using the acknowledged-
+    flawed unscoped model. probe_model below is now trained ONLY on
+    synthetic rows with concentration_uM < 10.
+
+    A first attempt at this fix also tried gating individual predictions by
+    whether the real chip's delta_f_probe fell inside the <10 uM subset's
+    observed input range, to report "out of scope" instead of silently
+    extrapolating for chips that are actually >10 uM. That gate turned out
+    to be a second bug, caught in the same review pass: per-chip noise is
+    large enough that the <10 uM subset's delta_f range (-367 to +56 Hz)
+    is almost as wide as the FULL, unrestricted range (-394 to +56 Hz) --
+    30 of 33 real chips fall "inside" it regardless of their true
+    concentration, so the gate would have rejected almost nothing. Root
+    cause: this is a restatement of the exact same non-monotonicity/noise
+    problem Option A exists to work around -- a low true concentration
+    with a large noise excursion and a high true concentration can produce
+    the same delta_f_probe reading, so the reading alone cannot certify
+    which regime a chip is in. Removed the ineffective gate. Instead,
+    probe_predicted_uM is always returned, but every caller MUST treat it
+    as conditional on "assuming true concentration < 10 uM" -- an
+    assumption this model cannot verify from the reading itself, only
+    state as a caveat (see PROBE_SCOPE_CAVEAT below)."""
     probe = pd.read_csv(DATA_DIR / "probe_synthetic_batch.csv")
     probe_clean = probe[probe["class"] == "CLEAN_PCA3_TARGET"].dropna(subset=["true_endpoint_delta_f"])
-    X_probe = probe_clean[["true_endpoint_delta_f"]].values
-    y_probe = probe_clean["concentration_uM"].values
-    probe_degree = pick_degree(X_probe, y_probe)
+    probe_below_peak = probe_clean[probe_clean["concentration_uM"] < 10]
+    X_probe = probe_below_peak[["true_endpoint_delta_f"]].values
+    y_probe = probe_below_peak["concentration_uM"].values
+    probe_degree = pick_degree(X_probe, y_probe, max_degree=min(5, len(X_probe) - 1))
     probe_model = make_pipeline(PolynomialFeatures(probe_degree), LinearRegression())
     probe_model.fit(X_probe, y_probe)
 
@@ -110,10 +138,21 @@ def _lstm_predict(model, config, chip_id: str):
     return LABELS[pred_idx], raw_seq
 
 
+PROBE_SCOPE_CAVEAT = (
+    "Valid only if the true concentration is below 10 uM (Testing week Task 7's "
+    "Option A fix). This cannot be verified from the reading alone -- per-chip "
+    "noise makes a low concentration with a large excursion and a high "
+    "concentration produce statistically indistinguishable delta_f_probe values "
+    "(see pipeline_api.py's train_regression_models() docstring for the "
+    "measurement that shows this)."
+)
+
+
 def _regression_predict(models, chip_row: pd.Series):
     out = {}
     if pd.notna(chip_row.get("delta_f_probe")):
         out["probe_predicted_uM"] = float(models["probe_model"].predict([[chip_row["delta_f_probe"]]])[0])
+        out["probe_scope_caveat"] = PROBE_SCOPE_CAVEAT
     if pd.notna(chip_row.get("delta_f_target")):
         out["target_predicted_uM"] = float(models["target_model"].predict([[chip_row["delta_f_target"]]])[0])
     return out

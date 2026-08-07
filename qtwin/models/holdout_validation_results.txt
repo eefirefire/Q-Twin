@@ -47,24 +47,30 @@ Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'D
  [1 0 2]]
 
 ------------------------------------------------------------
-REGRESSION (Task 2)
-Probe-stage hold-out MAE: 3.99 uM (n=11)  (33-chip validation MAE: 7.09 uM)
+REGRESSION (Task 2, probe stage using the Task 7 Option A fix: trained on <10 uM only)
+In-scope MAE (evaluated only on hold-out chips whose TRUE concentration is <10 uM,
+the honest way to evaluate a model that can't detect its own scope from the reading
+alone): 1.62 uM (n=4)
+Naive MAE (same model applied to ALL 11 hold-out chips regardless of true
+concentration, i.e. what happens if the scope caveat is ignored): 4.59 uM
+No directly comparable 33-chip number exists for this scoped model -- the old
+7.09 uM figure was the unscoped model's, not an apples-to-apples baseline.
 Target-stage hold-out MAE: 3.77 uM (n=3)  (33-chip validation MAE: 5.35 uM)
 
 ------------------------------------------------------------
 Per-chip detail:
     chip_id         actual_label      gatekeeper_pred  gatekeeper_correct            lstm_pred  lstm_correct  probe_pred_uM actual_conc_uM
- 14Mar_No.5              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False      11.891050              5
- 14Mar_No.6              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False      11.829644              5
- 14Mar_No.7              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False      11.796689             10
-15Mar_No.17              SUCCESS              SUCCESS                True              SUCCESS          True      11.155276             10
-15Mar_No.20              FAILURE              FAILURE                True              FAILURE          True      12.130746             10
-15Mar_No.23              FAILURE              FAILURE                True DIVERGENT_REPLICATES         False      12.018603             10
-15Mar_No.24              FAILURE              FAILURE                True DIVERGENT_REPLICATES         False      11.992405             10
- 20Mar_No.7 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True              SUCCESS         False      11.593889             10
- 21Mar_No.1 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True DIVERGENT_REPLICATES          True      11.870601              1
- 21Mar_No.3              SUCCESS              SUCCESS                True              SUCCESS          True      11.646553              5
- 21Mar_No.9 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True DIVERGENT_REPLICATES          True      11.982981             10
+ 14Mar_No.5              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False       3.649528              5
+ 14Mar_No.6              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False       3.699383              5
+ 14Mar_No.7              SUCCESS              SUCCESS                True DIVERGENT_REPLICATES         False       3.726139             10
+15Mar_No.17              SUCCESS              SUCCESS                True              SUCCESS          True       4.246891             10
+15Mar_No.20              FAILURE              FAILURE                True              FAILURE          True       3.454923             10
+15Mar_No.23              FAILURE              FAILURE                True DIVERGENT_REPLICATES         False       3.545970             10
+15Mar_No.24              FAILURE              FAILURE                True DIVERGENT_REPLICATES         False       3.567240             10
+ 20Mar_No.7 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True              SUCCESS         False       3.890788             10
+ 21Mar_No.1 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True DIVERGENT_REPLICATES          True       3.666130              1
+ 21Mar_No.3              SUCCESS              SUCCESS                True              SUCCESS          True       3.848032              5
+ 21Mar_No.9 DIVERGENT_REPLICATES DIVERGENT_REPLICATES                True DIVERGENT_REPLICATES          True       3.574891             10
 
 ------------------------------------------------------------
 HONEST ASSESSMENT:

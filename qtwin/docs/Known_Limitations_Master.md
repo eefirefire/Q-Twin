@@ -90,19 +90,35 @@ summarizes, it doesn't replace the originals as the source of truth.
   correlates too strongly (0.9997) with the endpoint value to add real
   disambiguating information. A genuine negative result, not a failed
   attempt hidden. **Option A (restrict to <10 µM) adopted instead**: MAE
-  2.34 µM on the genuinely monotonic range, explicitly declining to predict
-  above 10 µM rather than silently guessing wrong half the time. *Source:
-  `regression_curve_shape_fix.txt`.*
+  2.34 µM on 5 real chips below 10 µM. *Source: `regression_curve_shape_fix.txt`.*
+- **CAUGHT DURING INDEPENDENT REVIEW (2026-09-11): Option A was "adopted"
+  only in the report, never actually wired into the running pipeline.**
+  `pipeline_api.py` (used by both the Streamlit mockup and
+  `holdout_validation.py`) was still silently training and serving the
+  OLD, unscoped, acknowledged-flawed probe model. Fixed: `pipeline_api.py`
+  now trains the probe model on the <10 µM subset. A first fix attempt
+  (gate individual predictions by whether the input delta_f fell inside
+  the <10 µM subset's observed range) was itself found to be a second bug
+  in the same review pass: per-chip noise makes that range (-367 to +56 Hz)
+  almost as wide as the FULL unrestricted range (-394 to +56 Hz) — 30 of 33
+  real chips would pass the gate regardless of their true concentration, so
+  it rejected almost nothing. Removed. The correct fix: the model always
+  returns a prediction, but every caller must treat it as conditional on
+  "assumes true concentration <10 µM" — an assumption that cannot be
+  verified from the reading alone, only stated as a caveat
+  (`PROBE_SCOPE_CAVEAT` in `pipeline_api.py`). *Source: this review.*
 - **Target-stage interpolation near 7 µM fails plausibility** (predicts
   10.8–12.8 µM across all 5 polynomial degrees, outside the 5–10 µM
   plausible range) — may reflect the unverified +63.49 Hz anchor point
   rather than a model flaw; flagged as a candidate for real lab validation
   in the funded phase. *Source:
   `Proposal_Notes_Target_Stage_Interpolation.md`.*
-- **BLIND hold-out MAE**: probe 3.99 µM (n=11), target 3.77 µM (n=3, very
-  small sample — treat as illustrative, not conclusive). Both numerically
-  better than the 33-chip figures, though the small n (especially target,
-  n=3) means this shouldn't be over-read as a real improvement. *Source:
+- **BLIND hold-out MAE (post-fix, Option A model)**: probe 1.62 µM
+  evaluated honestly on the 4 hold-out chips truly <10 µM (n=4, very small),
+  vs. 4.59 µM if the same model is naively applied to all 11 hold-out chips
+  regardless of true concentration — a real, measurable cost of ignoring
+  the scope caveat. Target 3.77 µM (n=3, also very small). All three numbers
+  are illustrative given the tiny n, not conclusive. *Source:
   `holdout_validation_results.txt`.*
 
 ## Replicate divergence (cross-cutting)

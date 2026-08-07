@@ -53,7 +53,15 @@ def main():
     # --- Gatekeeper + LSTM: 3-class SUCCESS/FAILURE/DIVERGENT_REPLICATES ---
     gk_actual, gk_pred = [], []
     lstm_actual, lstm_pred = [], []
-    probe_actual_conc, probe_pred_conc = [], []
+    # Task 7's Option A model is only VALIDATED for true concentration <10 uM
+    # (its own docstring explains it can't detect this from the reading alone,
+    # since noise makes low/high-concentration delta_f values overlap). We DO
+    # know ground truth here, unlike at real inference time, so evaluate it the
+    # honest way the original Task 7 script did: MAE on the in-scope (<10 uM)
+    # subset separately from what happens if the model is naively applied to
+    # every hold-out chip regardless of true concentration.
+    probe_actual_conc_inscope, probe_pred_conc_inscope = [], []
+    probe_actual_conc_all, probe_pred_conc_all = [], []
     target_actual_conc, target_pred_conc = [], []
     per_chip_rows = []
 
@@ -72,8 +80,11 @@ def main():
         conc = row.get("concentration_uM")
         conc_num = pd.to_numeric(conc, errors="coerce")
         if pd.notna(conc_num) and conc_num > 0 and result.get("probe_predicted_uM") is not None:
-            probe_actual_conc.append(conc_num)
-            probe_pred_conc.append(result["probe_predicted_uM"])
+            probe_actual_conc_all.append(conc_num)
+            probe_pred_conc_all.append(result["probe_predicted_uM"])
+            if conc_num < 10:
+                probe_actual_conc_inscope.append(conc_num)
+                probe_pred_conc_inscope.append(result["probe_predicted_uM"])
         if pd.notna(conc_num) and conc_num > 0 and result.get("target_predicted_uM") is not None:
             target_actual_conc.append(conc_num)
             target_pred_conc.append(result["target_predicted_uM"])
@@ -98,14 +109,16 @@ def main():
     lstm_report = classification_report(lstm_actual, lstm_pred, labels=LABELS, zero_division=0) if lstm_actual else "n/a"
     lstm_cm = confusion_matrix(lstm_actual, lstm_pred, labels=LABELS) if lstm_actual else None
 
-    probe_mae = mean_absolute_error(probe_actual_conc, probe_pred_conc) if probe_actual_conc else float("nan")
+    probe_mae_inscope = mean_absolute_error(probe_actual_conc_inscope, probe_pred_conc_inscope) if probe_actual_conc_inscope else float("nan")
+    probe_mae_all = mean_absolute_error(probe_actual_conc_all, probe_pred_conc_all) if probe_actual_conc_all else float("nan")
     target_mae = mean_absolute_error(target_actual_conc, target_pred_conc) if target_actual_conc else float("nan")
 
     print(f"\nGatekeeper hold-out accuracy: {gk_acc:.3f} (n={n_holdout})")
     print(gk_report)
     print(f"\nLSTM hold-out accuracy: {lstm_acc:.3f} (n={len(lstm_actual)})")
     print(lstm_report)
-    print(f"\nProbe regressor hold-out MAE: {probe_mae:.2f} uM (n={len(probe_actual_conc)})")
+    print(f"\nProbe regressor hold-out MAE, in-scope (<10 uM) only: {probe_mae_inscope:.2f} uM (n={len(probe_actual_conc_inscope)})")
+    print(f"Probe regressor hold-out MAE, naively applied to ALL chips: {probe_mae_all:.2f} uM (n={len(probe_actual_conc_all)})")
     print(f"Target regressor hold-out MAE: {target_mae:.2f} uM (n={len(target_actual_conc)})")
 
     # Confusion matrix plots
@@ -126,11 +139,16 @@ def main():
         fig.savefig(MODEL_DIR / "holdout_lstm_confusion_matrix.png", dpi=130)
         plt.close(fig)
 
-    # Pull the already-reported 33-chip numbers for direct side-by-side comparison
+    # Pull the already-reported 33-chip numbers for direct side-by-side comparison.
+    # probe_mae is intentionally NOT included here: that 7.09 uM figure was the
+    # OLD unscoped model's number. Since pipeline_api.py now uses the Testing
+    # week Task 7 fix (Option A, <10 uM scoped), there is no directly comparable
+    # 33-chip number for the corrected model yet -- reporting the stale one next
+    # to this run's number would misleadingly imply an apples-to-apples
+    # comparison. Caught during an independent review; not silently carried over.
     known_33chip = {
         "gatekeeper_acc": 1.000,
         "lstm_acc": 0.758,
-        "probe_mae": 7.09,
         "target_mae": 5.35,
     }
 
@@ -160,9 +178,14 @@ def main():
         f.write("\n")
 
         f.write("-" * 60 + "\n")
-        f.write("REGRESSION (Task 2)\n")
-        f.write(f"Probe-stage hold-out MAE: {probe_mae:.2f} uM (n={len(probe_actual_conc)})")
-        f.write(f"  (33-chip validation MAE: {known_33chip['probe_mae']:.2f} uM)\n")
+        f.write("REGRESSION (Task 2, probe stage using the Task 7 Option A fix: trained on <10 uM only)\n")
+        f.write(f"In-scope MAE (evaluated only on hold-out chips whose TRUE concentration is <10 uM,\n")
+        f.write(f"the honest way to evaluate a model that can't detect its own scope from the reading\n")
+        f.write(f"alone): {probe_mae_inscope:.2f} uM (n={len(probe_actual_conc_inscope)})\n")
+        f.write(f"Naive MAE (same model applied to ALL {len(probe_actual_conc_all)} hold-out chips regardless of true\n")
+        f.write(f"concentration, i.e. what happens if the scope caveat is ignored): {probe_mae_all:.2f} uM\n")
+        f.write("No directly comparable 33-chip number exists for this scoped model -- the old\n")
+        f.write("7.09 uM figure was the unscoped model's, not an apples-to-apples baseline.\n")
         f.write(f"Target-stage hold-out MAE: {target_mae:.2f} uM (n={len(target_actual_conc)})")
         f.write(f"  (33-chip validation MAE: {known_33chip['target_mae']:.2f} uM)\n\n")
 
