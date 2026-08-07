@@ -6,6 +6,16 @@ are pulled directly from the committed metrics files in `qtwin/models/` and
 `qtwin/data/` as of this writing (2026-08-28), not from memory — see the file
 citation at the end of each subsection to independently re-check any number.
 
+**UPDATE (2026-09-11, caught during an independent review):** Section 2.3's
+probe-stage regressor numbers below predate the Testing/Tuning/Grooming
+week's Task 7 fix and are now superseded — the probe MAE quoted here (7.09
+µM) is the OLD, unscoped model's number. The current model (adopted Week
+5-1, "Option A": trained/valid only for concentrations <10 µM) reports MAE
+1.62 µM evaluated honestly (n=4, hold-out chips truly <10 µM) vs. 4.59 µM
+if naively applied regardless of true concentration (n=11) — see
+`Known_Limitations_Master.md`'s Stage 2b section for the full, current
+numbers before using this section in the actual proposal merge.
+
 **[EVA: BIOMEDICAL BACKGROUND SECTION PLACEHOLDER]** — assay chemistry,
 PCA3/QCM biosensor mechanism, and clinical motivation belong here. Not
 drafted by Evin; left intentionally blank rather than guessed at.
@@ -205,8 +215,18 @@ result (attention/TCN both help) is more robust than any specific number.
 
 ### 2.3 Stage 2b concentration regressor
 
-Probe stage: degree-1 polynomial, **MAE 7.09 µM** (31 real chips). Target
-stage: degree-3 polynomial, **MAE 5.35 µM** (7 real chips).
+**SUPERSEDED (see the update note at the top of this document) -- current
+model, post-Task-7-fix:** probe stage regressor is now trained/valid only
+for concentrations <10 µM (see below). Blind hold-out MAE: **1.62 µM**
+(n=4, evaluated honestly on chips truly <10 µM) vs. **4.59 µM** if the
+model is naively applied regardless of true concentration (n=11, shows the
+real cost of ignoring the scope caveat). Target stage: degree-3 polynomial,
+**MAE 5.35 µM** (7 real chips, unaffected by the Task 7 fix).
+
+Original Week 3/4 number, kept for historical context only, NOT the current
+model: probe stage degree-1 polynomial, MAE 7.09 µM (31 real chips,
+unscoped -- attempted to predict across the full 0.5-40 µM range including
+the non-monotonic region above 10 µM).
 
 **Honest caveat, preserved as written:** the probe-stage concentration-response
 curve is non-monotonic (peaks at 10 µM, weakens 20–40 µM) — a single Δf value
@@ -279,7 +299,7 @@ rule applied to both real and synthetic data).
 | Stage 2a LSTM (official) | Accuracy | 75.8% | 33 | DIVERGENT_REPLICATES precision only 0.47 |
 | Stage 2a LSTM+Attention (comparison) | Accuracy | 87.9% | 33 | Recommended, not yet promoted to official model |
 | Stage 2a TCN (comparison) | Accuracy | 87.9% | 33 | Matches LSTM+Attention; fewer parameters |
-| Stage 2b Regressor (probe) | MAE | 7.09 µM | 31 | Structurally ill-posed (non-monotonic curve) |
+| Stage 2b Regressor (probe, current: Option A, <10µM-scoped) | MAE | 1.62 µM in-scope / 4.59 µM if scope ignored | 4 / 11 | Scoped model; 7.09 µM was the superseded unscoped version |
 | Stage 2b Regressor (target) | MAE | 5.35 µM | 7 | 7 µM interpolation fails plausibility check (2.4) |
 
 ---

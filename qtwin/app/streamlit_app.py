@@ -146,6 +146,14 @@ models_dir = Path(__file__).resolve().parents[1] / "models"
 with tab1:
     st.text((models_dir / "gatekeeper_metrics.txt").read_text(encoding="utf-8"))
 with tab2:
+    st.info(
+        "The probe-stage prediction shown above uses the Testing week Task 7 fix "
+        "(Option A, trained/valid only for concentrations <10 uM) -- NOT the original "
+        "unscoped model regression_metrics.txt below describes. See "
+        "regression_curve_shape_fix.txt for the current model's own numbers."
+    )
     st.text((models_dir / "regression_metrics.txt").read_text(encoding="utf-8"))
+    st.divider()
+    st.text((models_dir / "regression_curve_shape_fix.txt").read_text(encoding="utf-8"))
 with tab3:
     st.text((models_dir / "lstm_metrics.txt").read_text(encoding="utf-8"))
