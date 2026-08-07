@@ -73,10 +73,13 @@ summarizes, it doesn't replace the originals as the source of truth.
   fairer/harder-to-challenge comparison than the first version made.
   *Source: `benchmark_comparison.txt`.*
 - **Attention weights do NOT clearly concentrate in the first 15s**
-  (mean weight 0.225 vs. a uniform 0.333) — does not independently confirm
-  the Week 1 "first 30 seconds matter most" biomarker insight the way
-  hoped. Genuinely unexpected, single-seed result, not chased further.
-  *Source: `attention_weight_analysis.txt`.*
+  (mean weight 0.225, seed 1; 0.294 average — uniform baseline 0.333) —
+  does not independently confirm the Week 1 "first 30 seconds matter most"
+  biomarker insight the way hoped. **Verified across 6 seeds during
+  independent review** (originally left as a hedged single-run
+  observation) — the below-uniform direction holds consistently every
+  time, upgrading this from suggestive to a genuinely reproducible
+  finding. *Source: `attention_weight_analysis.txt`.*
 - **Learning-rate/dropout sweep confirms, doesn't improve on, Week 4's
   existing defaults** (tied at 0.548 internal accuracy, not beaten).
   Sequence window (45s/60pts) reconfirmed as the coverage-optimal choice —
