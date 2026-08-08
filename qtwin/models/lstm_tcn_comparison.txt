@@ -1,6 +1,16 @@
 Week 4 Task 4 -- LSTM tuning beyond the first pass: LSTM vs. LSTM+Attention vs. TCN
 ======================================================================
 
+UPDATE (2026-09-12): this comparison's "RECOMMENDATION (not yet acted on)"
+below (promoting LSTM+Attention) was never carried out, and turned out NOT
+to hold once tested against the single-replicate-augmented training set +
+the blind hold-out set (this report predates both). See
+augmented_architecture_comparison.txt: on the augmented data, neither
+LSTM+Attention nor TCN beats the plain LSTM anymore -- the advantage shown
+below was specific to the pre-augmentation training data. Kept below as
+the honest historical record of what this comparison found at the time,
+not deleted or silently superseded.
+
 HONEST NOTE ON SCOPE: the Week 4 plan named the target weak point as
 'DIVERGENT_REPLICATES: 4/7 misclassified as SUCCESS' -- that describes the
 PRE-Task-4-fix LSTM (87.9% run, Week 3). The Week 3 follow-up session already

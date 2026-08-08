@@ -77,12 +77,23 @@ summarizes, it doesn't replace the originals as the source of truth.
   `lstm_metrics.txt`.*
 - **LSTM+Attention and TCN both reach 87.9%** on the PRE-augmentation
   33-chip comparison, `DIVERGENT_REPLICATES` precision improved to 0.636.
-  Not yet promoted to the official model, and not yet re-compared against
-  the single-replicate-augmented LSTM above — flagged for a future,
-  apples-to-apples comparison rather than assumed still superior. A
-  within-comparison LSTM re-run scored 57.6% under a different seed,
+  A within-comparison LSTM re-run scored 57.6% under a different seed,
   showing real hyperparameter-selection noise at this dataset size.
   *Source: `lstm_tcn_comparison.txt`.*
+- **RESOLVED (2026-09-12): re-ran LSTM+Attention/TCN on the augmented
+  310-sequence training set, evaluated on hold-out for the first time —
+  neither beats the plain augmented LSTM.** Closes the gap flagged just
+  above. Result: LSTM (baseline, retrained fresh) 33-chip=0.788/
+  hold-out=0.727; LSTM+Attention 33-chip=0.667/hold-out=0.636; TCN
+  33-chip=0.758/hold-out=0.636. **The attention/TCN advantage seen on the
+  PRE-augmentation data (87.9% vs 75.8%) does NOT transfer to the
+  augmented data** — on 310 sequences, the plain LSTM now matches or
+  beats both more complex architectures on every tracked metric. A real,
+  honest null result: augmentation and architecture complexity aren't
+  additive here, so the officially-promoted single-replicate-augmented
+  plain LSTM remains the best model found, not superseded. *Source:
+  `augmented_architecture_comparison.py`,
+  `augmented_architecture_comparison.txt`.*
 - **A flattened-feature Random Forest baseline, properly tuned, scores
   63.6%** (max_depth/n_estimators swept via internal split; an earlier
   untuned version reported 51.5% and was caught understating the
