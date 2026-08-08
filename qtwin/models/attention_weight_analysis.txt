@@ -5,19 +5,19 @@ Question: does an attention layer, trained with no knowledge of the
 hand-derived early_displacement_30s biomarker, independently learn to
 weight the early part of the probe curve most heavily?
 
-Mean attention weight in the first 15s of the 45s window (seed 20260907): 0.225
+Mean attention weight in the first 15s of the 45s window (seed 20260907): 0.299
 (a uniform/no-preference attention would give 0.333 to that same span)
-Peak mean attention weight occurs at t=34.3s
+Peak mean attention weight occurs at t=38.1s
 
 Multi-seed check (6 seeds, added after independent review found the
 original version left this as an uncertain single-run claim): early-15s share per seed:
-  seed=20260907: 0.225
-  seed=1: 0.311
-  seed=2: 0.304
-  seed=3: 0.319
-  seed=4: 0.310
-  seed=5: 0.299
-Mean across all 6 seeds: 0.294 (uniform=0.333). CONSISTENT direction across all seeds.
+  seed=20260907: 0.299
+  seed=1: 0.321
+  seed=2: 0.307
+  seed=3: 0.306
+  seed=4: 0.315
+  seed=5: 0.294
+Mean across all 6 seeds: 0.307 (uniform=0.333). CONSISTENT direction across all seeds.
 
 RESULT: NO -- attention does NOT clearly concentrate early; weight is spread
 across the window (or concentrates elsewhere, e.g. near the end). This is

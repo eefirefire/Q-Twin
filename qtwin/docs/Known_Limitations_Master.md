@@ -114,13 +114,34 @@ summarizes, it doesn't replace the originals as the source of truth.
   fairer/harder-to-challenge comparison than the first version made.
   *Source: `benchmark_comparison.txt`.*
 - **Attention weights do NOT clearly concentrate in the first 15s**
-  (mean weight 0.225, seed 1; 0.294 average — uniform baseline 0.333) —
-  does not independently confirm the Week 1 "first 30 seconds matter most"
-  biomarker insight the way hoped. **Verified across 6 seeds during
-  independent review** (originally left as a hedged single-run
-  observation) — the below-uniform direction holds consistently every
-  time, upgrading this from suggestive to a genuinely reproducible
-  finding. *Source: `attention_weight_analysis.txt`.*
+  (mean weight 0.299, seed 20260907; 0.307 average across 6 seeds —
+  uniform baseline 0.333; peak weight occurs at t=38.1s, LATE in the
+  window) — does **not** independently confirm the Week 1 "first 30
+  seconds matter most" biomarker insight; if anything the model weights
+  the LATE part of the curve more. **Verified across 6 seeds** — the
+  below-uniform-early direction holds consistently every time, a
+  genuinely reproducible finding, but the finding itself is a null/
+  contrary result for the "attention rediscovers the early-window
+  insight" story, not a confirming one. *Source:
+  `attention_weight_analysis.txt`.*
+- **BUG FOUND AND FIXED (2026-09-12, re-review): the "verified robust
+  across 6 seeds" claim above was not actually reproducible before this
+  fix.** `torch.manual_seed()` alone does not make CPU LSTM training
+  bit-reproducible — PyTorch's default multi-threaded CPU execution has
+  non-deterministic floating-point reduction order, which compounds over
+  150 epochs into meaningfully different final weights. Rerunning the
+  exact same script/seeds in a fresh process produced DIFFERENT numbers
+  each time — one rerun had seed 5 cross the uniform baseline entirely
+  (0.385, flipping "CONSISTENT" to "INCONSISTENT direction"), directly
+  contradicting the already-pushed "VERIFIED ROBUST" claim. Root cause
+  confirmed and fixed by forcing `torch.set_num_threads(1)` +
+  `torch.use_deterministic_algorithms(True)`: two separate fresh runs
+  under that fix produced bit-identical results. The qualitative
+  conclusion survived (still consistently below-uniform-early across all
+  6 seeds) — the original finding was correct, but only by luck until
+  this fix; the numbers above (0.299/0.307) are the first properly
+  reproducible ones. *Source: `attention_weight_visualization.py`'s
+  module-level comment.*
 - **Learning-rate/dropout sweep confirms, doesn't improve on, Week 4's
   existing defaults** (tied at 0.548 internal accuracy, not beaten).
   Sequence window (45s/60pts) reconfirmed as the coverage-optimal choice —
