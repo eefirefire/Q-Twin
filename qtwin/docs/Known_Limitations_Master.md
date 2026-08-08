@@ -146,6 +146,12 @@ summarizes, it doesn't replace the originals as the source of truth.
   the scope caveat. Target 3.77 µM (n=3, also very small). All three numbers
   are illustrative given the tiny n, not conclusive. *Source:
   `holdout_validation_results.txt`.*
+- **`holdout_validation_results.txt` re-run (2026-09-12) with the promoted
+  single-replicate-augmented LSTM** — its LSTM hold-out line now reads
+  0.727 (gap vs. 33-chip accuracy: +0.031), matching
+  `lstm_augmented_metrics.txt` exactly. Regression/gatekeeper numbers were
+  unaffected (deterministic re-run, only the LSTM predictions changed).
+  This closes the staleness gap flagged right after the LSTM promotion.
 
 ## Replicate divergence (cross-cutting)
 
