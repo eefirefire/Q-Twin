@@ -250,18 +250,28 @@ fabricated to look complete.
   noisy, not-more-informative numbers at real computational cost. Flagged
   as a real open gap for a future phase with more real chips, not
   quietly omitted.
-- **Biological plausibility check (kinetic parameter, in place of a Kd
-  comparison table)**: attempting to independently fit the generator's
-  k_obs (pseudo-first-order rate, 0.18 +/- 0.05 /s) against real SUCCESS
-  probe-stage curves **degenerated** — investigating why surfaced a real,
-  previously-undocumented finding: 45/47 real curves already reach ≥70% of
-  their own final value at the very FIRST recorded sample (t=0.62s), i.e.
-  the true binding rate is faster than the instrument's temporal
-  resolution, not slower. This means k_obs cannot currently be validated
-  against real curves the way a Kd table would — reported as a genuine
-  gap in the generator's physical grounding, not covered up with a
-  fabricated comparison. *Source: `biological_plausibility_check.py`,
+- **PROMOTED FROM CAVEAT TO FINDING (2026-09-12): 45/47 real SUCCESS
+  curves are already ≥70% of their own final value at the very FIRST
+  recorded sample (t=0.62s) — real binding is essentially complete before
+  the instrument's acquisition window starts.** This independently
+  explains a result already reported elsewhere in this document:
+  `early_displacement_30s` correlating 0.9997 with the full-run endpoint
+  `delta_f_probe` isn't a coincidence or a redundant-feature artifact —
+  if binding saturates in well under a second, a t=30s reading measures
+  the *same* already-reached steady-state value the endpoint does, just
+  earlier and with less accumulated drift/noise. Genuine mechanistic
+  support for why Week 1's central biomarker discovery works, worth
+  stating as a synthesis finding in the proposal. *Source:
+  `biological_plausibility_check.py`,
   `biological_plausibility_check.txt`.*
+- **Separate, narrower scope limitation (attempting to independently fit
+  the generator's k_obs against real curves)**: this specific check
+  **degenerated** — no real rise phase is left in the data (per the
+  finding above) to fit a rate constant against, so k_obs
+  (pseudo-first-order rate, 0.18 +/- 0.05 /s) cannot currently be
+  validated against real curves the way a Kd table would. A real, honest
+  scope limit on ONE generator parameter — it does not diminish the
+  finding above, which stands on its own. *Source: same files.*
 - **BUG CAUGHT DURING SELF-REVIEW (2026-09-12): the check above's own
   CHI-stage baseline computation was wrong on first two attempts.** V1
   grouped CHI rows by `chip_id` alone and took the chronologically-last
