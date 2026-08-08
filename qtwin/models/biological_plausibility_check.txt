@@ -17,14 +17,14 @@ just noisy data. Investigating why is the actual finding below.
 
 n=47 real SUCCESS probe-stage replicate curves checked.
 Fraction of each curve's own final value already reached at the FIRST
-recorded sample (t=0.62s): mean=1.019, median=1.003
-46/47 curves are already >=70% of their final value at
+recorded sample (t=0.62s): mean=0.963, median=1.003
+45/47 curves are already >=70% of their final value at
 that first sample -- essentially fully risen before the probe-stage
 acquisition window even starts recording.
 Only 1/47 curves show a genuine rise from baseline
 (<30% of final value at t=0), where a single-exponential k_obs fit is
 even meaningful to attempt.
-Of those 1, 1 fit successfully: k_obs = [0.001] /s
+Of those 1, 1 fit successfully: k_obs = [0.086] /s
 
 HONEST ASSESSMENT:
 The real specific-binding rise the generator models as an exp(-k*t)

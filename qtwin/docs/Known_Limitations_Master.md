@@ -233,7 +233,7 @@ fabricated to look complete.
   comparison table)**: attempting to independently fit the generator's
   k_obs (pseudo-first-order rate, 0.18 +/- 0.05 /s) against real SUCCESS
   probe-stage curves **degenerated** — investigating why surfaced a real,
-  previously-undocumented finding: 46/47 real curves already reach ≥70% of
+  previously-undocumented finding: 45/47 real curves already reach ≥70% of
   their own final value at the very FIRST recorded sample (t=0.62s), i.e.
   the true binding rate is faster than the instrument's temporal
   resolution, not slower. This means k_obs cannot currently be validated
@@ -241,6 +241,23 @@ fabricated to look complete.
   gap in the generator's physical grounding, not covered up with a
   fabricated comparison. *Source: `biological_plausibility_check.py`,
   `biological_plausibility_check.txt`.*
+- **BUG CAUGHT DURING SELF-REVIEW (2026-09-12): the check above's own
+  CHI-stage baseline computation was wrong on first two attempts.** V1
+  grouped CHI rows by `chip_id` alone and took the chronologically-last
+  row — for chips with two separate CHI recordings (e.g. `20Mar_No.1`,
+  CHI files ~39 Hz apart), this silently mixed one replicate's baseline
+  into the other's probe curve, producing delta_f values up to 35.4 Hz
+  off from `chip_summary.csv`'s own authoritative value. V2 paired
+  `(chip_id, replicate)` exactly — better, but still up to 9.3 Hz off for
+  chips where CHI and probe have a different replicate count (e.g.
+  `15Mar_No.17`: 1 CHI replicate, 2 probe replicates). Fixed by exactly
+  replicating `ingest_raw_curves.py`'s own logic (average CHI endpoints
+  across CHI's own replicates per chip, apply that one value to every
+  probe replicate) — verified to reproduce `chip_summary.csv`'s
+  `delta_f_probe` to <1e-8 Hz across all 29 checked SUCCESS chips. The
+  core finding (curves already ~100% risen at the first sample) was
+  robust to the bug: 46/47 became 45/47, same conclusion. *Source:
+  `biological_plausibility_check.py`'s `load_chi_baselines` docstring.*
 - **Wasserstein distance, supplementary to the required K-S tests**: added
   alongside (not replacing) the two REQUIRED K-S tests in
   `ks_validation_report.txt`. Delta-f probe: 17.70 Hz (3.7% of real

@@ -20,7 +20,7 @@ noisy data. Investigating why (see below) turned into the actual finding.
 
 ROOT CAUSE / REAL FINDING: real curves' very FIRST recorded sample
 (t=0.62s, the sampling interval) is already ~100% of that curve's own
-final value -- 46/47 real SUCCESS probe-stage replicates have
+final value -- 45/47 real SUCCESS probe-stage replicates have
 |y(0)/y(final)| >= 0.7. The specific-binding rise the generator models as
 an exp(-k*t) climb over ~10-20s is, in the real instrument, ALREADY
 COMPLETE before the first sample is even recorded. A single-exponential
@@ -50,9 +50,51 @@ def association_model(t, final_value, k):
     return final_value * (1.0 - np.exp(-k * t))
 
 
+def _endpoint(g: pd.DataFrame) -> float:
+    return g.sort_values("Relative_time")["Resonance_Frequency"].iloc[-1]
+
+
+def _startpoint(g: pd.DataFrame) -> float:
+    return g.sort_values("Relative_time")["Resonance_Frequency"].iloc[0]
+
+
 def load_chi_baselines(raw: pd.DataFrame) -> pd.Series:
-    chi = raw[raw["stage"] == "CHI"].sort_values("Relative_time")
-    return chi.groupby("chip_id")["Resonance_Frequency"].last()
+    """One CHI-stage baseline per chip_id, computed EXACTLY the way
+    ingest_raw_curves.py computes delta_f_probe's baseline: endpoint per
+    (chip_id, replicate) within CHI, averaged across CHI's own replicates
+    per chip -- then that single per-chip value is applied to every probe
+    replicate (ingest_raw_curves.py does not pair specific probe/CHI
+    replicate numbers together; it averages each stage's own replicates
+    independently, then subtracts the two chip-level averages). Falls back
+    to the probe curve's own start point (also averaged across probe
+    replicates) for the handful of chips with no CHI file at all, matching
+    ingest_raw_curves.py's documented fallback.
+
+    BUG FOUND AND FIXED (independent review, kept as history): TWO earlier
+    versions of this function got this wrong. V1 grouped CHI rows by
+    chip_id alone and took the chronologically-last row -- for chips with
+    two separate CHI recordings (e.g. 20Mar_No.1: "No.1_CHI_RT_R1.csv" and
+    "No.1_CHI_RT_R2.csv", absolute frequencies ~39 Hz apart), this silently
+    picked whichever replicate's row happened to have a later timestamp,
+    producing final delta_f values up to 35.4 Hz off from
+    chip_summary.csv's own delta_f_probe. V2 fixed that by pairing
+    (chip_id, replicate) exactly -- closer, but still up to 9.3 Hz off for
+    chips where CHI and probe have a different NUMBER of replicates (e.g.
+    15Mar_No.17: 1 CHI replicate, 2 probe replicates -- there's no CHI
+    replicate 2 to pair against). This version replicates
+    ingest_raw_curves.py's actual averaging logic exactly. Verified
+    against chip_summary.csv: max discrepancy is now <1e-8 Hz (floating
+    point noise only) across all 29 checked SUCCESS chips."""
+    chi = raw[raw["stage"] == "CHI"]
+    chi_end_per_rep = chi.groupby(["chip_id", "replicate"]).apply(_endpoint, include_groups=False)
+    chi_baseline_per_chip = chi_end_per_rep.groupby("chip_id").mean()
+
+    probe_start_per_rep = raw[raw["stage"] == "probe"].groupby(["chip_id", "replicate"]).apply(
+        _startpoint, include_groups=False
+    )
+    probe_start_per_chip = probe_start_per_rep.groupby("chip_id").mean()
+
+    return chi_baseline_per_chip.combine_first(probe_start_per_chip)
 
 
 def main():
