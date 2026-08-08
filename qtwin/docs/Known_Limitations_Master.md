@@ -94,6 +94,17 @@ summarizes, it doesn't replace the originals as the source of truth.
   plain LSTM remains the best model found, not superseded. *Source:
   `augmented_architecture_comparison.py`,
   `augmented_architecture_comparison.txt`.*
+- **Follow-up: soft-vote ensemble (mean softmax across all 3 augmented
+  models) ties the plain LSTM exactly (33-chip=0.788, hold-out=0.727),
+  doesn't beat it.** Tested rather than assumed, since architectures
+  making different per-chip errors can sometimes make ensembling win even
+  when no single member does — here the plain LSTM's own predictions
+  dominate the average since it's already the strongest member, so
+  ensembling adds inference complexity for zero net gain. Another honest
+  null result: across every technique tried this project (augmentation,
+  architecture swap, ensembling), the single-replicate-augmented plain
+  LSTM remains the best-supported, simplest choice. *Source:
+  `augmented_ensemble.py`, `augmented_ensemble_results.txt`.*
 - **A flattened-feature Random Forest baseline, properly tuned, scores
   63.6%** (max_depth/n_estimators swept via internal split; an earlier
   untuned version reported 51.5% and was caught understating the

@@ -1,0 +1,65 @@
+Soft-vote ensemble: LSTM + LSTM+Attention + TCN (all augmented-trained)
+==========================================================================
+
+Follow-up to augmented_architecture_comparison.txt, which found no single
+architecture beats the officially-promoted plain LSTM on the augmented
+310-sequence training set. Different architectures can still make
+DIFFERENT mistakes on different chips even when tied/losing individually --
+this tests whether averaging predicted probabilities across all three
+(soft-vote ensemble, mean softmax then argmax) recovers a net improvement
+from that error diversity, rather than assuming it would.
+
+Currently-promoted official model: single-replicate-augmented LSTM,
+33-chip accuracy = 0.758, hold-out accuracy = 0.727
+
+Individual models in this ensemble (same run, same tuning, feeds the
+ensemble below):
+  LSTM (baseline)       33chip=0.788  holdout=0.727
+  LSTM+Attention        33chip=0.667  holdout=0.636
+  TCN                   33chip=0.758  holdout=0.636
+
+ENSEMBLE (soft-vote, mean of all 3 softmax outputs):
+  33-chip accuracy: 0.788
+  hold-out accuracy: 0.727
+
+33-chip real validation report:
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.78      0.88        18
+             FAILURE       0.73      1.00      0.84         8
+DIVERGENT_REPLICATES       0.50      0.57      0.53         7
+
+            accuracy                           0.79        33
+           macro avg       0.74      0.78      0.75        33
+        weighted avg       0.83      0.79      0.79        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[14  0  4]
+ [ 0  8  0]
+ [ 0  3  4]]
+
+BLIND hold-out report:
+                      precision    recall  f1-score   support
+
+             SUCCESS       0.80      0.80      0.80         5
+             FAILURE       0.75      1.00      0.86         3
+DIVERGENT_REPLICATES       0.50      0.33      0.40         3
+
+            accuracy                           0.73        11
+           macro avg       0.68      0.71      0.69        11
+        weighted avg       0.70      0.73      0.71        11
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[4 0 1]
+ [0 3 0]
+ [1 1 1]]
+
+HONEST ASSESSMENT:
+The ensemble (0.727 hold-out) ties or marginally beats the
+officially-promoted LSTM (0.727), but does not clearly
+beat the best individual model tested here (0.727) --
+not a strong enough case to justify tripling model complexity for
+production. Reported as a real but marginal result, not oversold.
+
+n=11 hold-out, n=33 real validation -- both small, treat any single-chip
+swing as real sampling noise, not a decisive result on its own.
