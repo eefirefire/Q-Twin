@@ -1,0 +1,71 @@
+LSTM improvement: single-replicate data augmentation
+============================================================
+
+Technique: added 155 single-replicate synthetic training sequences
+(augment_single_replicate_data.py) alongside the original 155
+two-replicate-averaged ones, directly targeting the diagnosed root
+cause of the LSTM's weak SINGLE_REPLICATE performance (56.25% on that
+subclass in the 33-chip validation set) -- the original training data
+only ever contained averaged-2-replicate curves, so the model had never
+seen genuine single-replicate noise statistics.
+
+Training set: 310 sequences (310 = 155 original + 155 augmentation).
+Tuning: same hidden_size x epochs grid, same internal 80/20 synthetic
+split discipline as model_trainer.py -- never selecting hyperparameters
+by peeking at real validation accuracy.
+  hidden_size= 16 epochs= 80: internal tuning-split accuracy = 0.677
+  hidden_size= 16 epochs=150: internal tuning-split accuracy = 0.661
+  hidden_size= 16 epochs=220: internal tuning-split accuracy = 0.677
+  hidden_size= 32 epochs= 80: internal tuning-split accuracy = 0.694
+  hidden_size= 32 epochs=150: internal tuning-split accuracy = 0.694
+  hidden_size= 32 epochs=220: internal tuning-split accuracy = 0.661
+  hidden_size= 64 epochs= 80: internal tuning-split accuracy = 0.677
+  hidden_size= 64 epochs=150: internal tuning-split accuracy = 0.677
+  hidden_size= 64 epochs=220: internal tuning-split accuracy = 0.694
+Selected hidden_size=32, epochs=80.
+
+------------------------------------------------------------
+BEFORE (official LSTM, lstm_metrics.txt): 33-chip accuracy = 0.758, hold-out accuracy = 0.455
+
+AFTER (this augmented model):
+33-chip validation accuracy: 0.758
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.78      0.88        18
+             FAILURE       0.70      0.88      0.78         8
+DIVERGENT_REPLICATES       0.44      0.57      0.50         7
+
+            accuracy                           0.76        33
+           macro avg       0.71      0.74      0.72        33
+        weighted avg       0.81      0.76      0.77        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[14  0  4]
+ [ 0  7  1]
+ [ 0  3  4]]
+
+Hold-out accuracy: 0.727
+                      precision    recall  f1-score   support
+
+             SUCCESS       0.80      0.80      0.80         5
+             FAILURE       0.75      1.00      0.86         3
+DIVERGENT_REPLICATES       0.50      0.33      0.40         3
+
+            accuracy                           0.73        11
+           macro avg       0.68      0.71      0.69        11
+        weighted avg       0.70      0.73      0.71        11
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[4 0 1]
+ [0 3 0]
+ [1 1 1]]
+
+------------------------------------------------------------
+HONEST METHODOLOGY NOTE: the root-cause diagnosis (SINGLE_REPLICATE
+weakness) was visible in the 33-chip validation set on its own (56.25%
+there), independent of hold-out results -- so this fix isn't reverse-
+engineered from hold-out chip identities. That said, reporting hold-out
+numbers here means this hold-out set can no longer be treated as fully
+untouched by any downstream modeling decision the way it was before this
+change -- flagged plainly, not glossed over. A cleaner future test would
+need a second, still-untouched hold-out set to confirm this generalizes.

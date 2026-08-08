@@ -156,4 +156,11 @@ with tab2:
     st.divider()
     st.text((models_dir / "regression_curve_shape_fix.txt").read_text(encoding="utf-8"))
 with tab3:
+    st.info(
+        "The prediction shown above uses the single-replicate-augmented LSTM "
+        "(promoted after diagnosing why hold-out accuracy dropped) -- see "
+        "lstm_augmented_metrics.txt below for the current model's own numbers."
+    )
+    st.text((models_dir / "lstm_augmented_metrics.txt").read_text(encoding="utf-8"))
+    st.divider()
     st.text((models_dir / "lstm_metrics.txt").read_text(encoding="utf-8"))

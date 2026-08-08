@@ -46,24 +46,43 @@ summarizes, it doesn't replace the originals as the source of truth.
 
 ## Stage 2a — Sequence model (LSTM / LSTM+Attention / TCN)
 
-- **Official LSTM: 75.8% accuracy**, `DIVERGENT_REPLICATES` recall=1.00 but
-  precision=0.47 — over-triggers rather than misses (a different failure
-  mode than the original Week 3 prototype, whose problem was the reverse).
-  155 synthetic training curves is small for a 3-class sequence problem —
-  this is a feasibility prototype, not a production classifier. *Source:
+- **PROMOTED (2026-09-12): single-replicate-augmented LSTM is now the
+  official model.** Root cause of the hold-out drop below was diagnosed:
+  the LSTM's accuracy on `SINGLE_REPLICATE` real chips was only 56.25%
+  (9/16) even in the 33-chip validation set, vs. 90-100% on
+  CONCORDANT/DIVERGENT chips — the synthetic training data
+  (`generate_probe_batch.py`) always averages two replicates per
+  sequence, so the model had never seen a genuine single-replicate noise
+  profile (mathematically noisier than an average of two: `Var(mean of
+  2 iid) = Var/2`). Real single-replicate curves were out-of-distribution
+  and defaulted to `DIVERGENT_REPLICATES`. Fixed by generating 155
+  additional single-replicate synthetic training sequences (labeled
+  SUCCESS/FAILURE only, never DIVERGENT_REPLICATES, matching exactly how
+  real single-replicate chips are labeled) and retraining on the combined
+  310-example set, same architecture/tuning discipline. **Result: blind
+  hold-out accuracy improved from 45.5% to 72.7%**, 33-chip accuracy held
+  at 75.8% (recall redistributed: FAILURE 0.62→0.88, DIVERGENT 1.00→0.57).
+  *Source: `lstm_augmented_metrics.txt`,
+  `augment_single_replicate_data.py`.*
+- **Methodology caveat on the above:** the root-cause diagnosis was
+  independently visible in the 33-chip validation set (56.25% there too),
+  not reverse-engineered from hold-out chip identities — but once
+  hold-out numbers are reported as part of choosing this fix, this
+  hold-out set can no longer be treated as fully untouched by any
+  downstream decision the way it was before. A second, still-untouched
+  hold-out set would be needed to fully confirm this generalizes.
+- **Superseded — official LSTM before this fix: 75.8% / 33-chip, 45.5% /
+  hold-out**, `DIVERGENT_REPLICATES` recall=1.00 but precision=0.47 —
+  over-triggered rather than missed. Kept as historical record. *Source:
   `lstm_metrics.txt`.*
-- **LSTM+Attention and TCN both reach 87.9%**, `DIVERGENT_REPLICATES`
-  precision improved to 0.636. Not yet promoted to the official model —
-  flagged for explicit sign-off. A within-comparison LSTM re-run scored
-  57.6% under a different seed, showing real hyperparameter-selection
-  noise at this dataset size — treat any single run's exact decimal as
-  uncertain. *Source: `lstm_tcn_comparison.txt`.*
-- **BLIND hold-out result: DROPS sharply to 45.5%** (n=11) vs. 75.8% on
-  the 33-chip validation set — the first genuinely blind evidence that
-  this model's reported accuracy may not generalize as well as the
-  extensively-iterated-against validation numbers suggested. The single
-  most important honest finding of the testing week. *Source:
-  `holdout_validation_results.txt`.*
+- **LSTM+Attention and TCN both reach 87.9%** on the PRE-augmentation
+  33-chip comparison, `DIVERGENT_REPLICATES` precision improved to 0.636.
+  Not yet promoted to the official model, and not yet re-compared against
+  the single-replicate-augmented LSTM above — flagged for a future,
+  apples-to-apples comparison rather than assumed still superior. A
+  within-comparison LSTM re-run scored 57.6% under a different seed,
+  showing real hyperparameter-selection noise at this dataset size.
+  *Source: `lstm_tcn_comparison.txt`.*
 - **A flattened-feature Random Forest baseline, properly tuned, scores
   63.6%** (max_depth/n_estimators swept via internal split; an earlier
   untuned version reported 51.5% and was caught understating the

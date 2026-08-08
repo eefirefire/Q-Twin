@@ -1,6 +1,19 @@
 Week 3 Task 3 -- Stage 2a Sequence Model (LSTM) Prototype
 ============================================================
 
+SUPERSEDED (2026-09-12): the model files this document describes
+(lstm_probe_stage.pt / lstm_config.json) have been REPLACED by a
+single-replicate-augmented retrain -- see lstm_augmented_metrics.txt for
+the current official model. The numbers below (75.8% / 33-chip, 45.5% /
+blind hold-out) are kept as the historical record of what motivated the
+augmentation: the 45.5% hold-out number was traced to a diagnosed root
+cause (this model's training data only ever contained 2-replicate-averaged
+curves, never a genuine single-replicate noise profile) and fixed by
+training on an expanded set that includes real single-replicate examples.
+The current model reaches 72.7% on the same blind hold-out set (still
+75.8% on the 33-chip set). This file's architecture/tuning description
+below is otherwise still accurate background.
+
 This model takes the full probe-stage curve shape (60-point resampled
 sequence, 0-45s window) rather than the single early_displacement_30s
 number the Task 1 gatekeeper used. DIVERGENT_REPLICATES rows are NOT
