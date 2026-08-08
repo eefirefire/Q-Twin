@@ -1,5 +1,5 @@
 """
-Reviewer-anticipated gap: a single ~24% (11/45) hold-out split is a much
+Reviewer-anticipated gap: a single ~25% (11/44) hold-out split is a much
 weaker generalization claim than Leave-One-Chip-Out Cross-Validation
 (LOCO-CV) over ALL real chips -- pull one chip's data out entirely, train
 on every other real chip, test on the one held out, repeat until every
