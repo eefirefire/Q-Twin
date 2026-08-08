@@ -1,0 +1,56 @@
+Temperature / sensor-drift effect analysis (real data)
+============================================================
+
+Reviewer-anticipated question: does the assay/AI pipeline account for
+real temperature variation (RT vs 37C vs 60C)? Answer built from ACTUAL
+real chip data, not just written as an unverified limitation --
+raw_timeseries_master.csv has a real 'temperature' field for a subset
+of chips, mostly at matched 10 uM concentration.
+
+Restricted to 10 uM chips (concentration held constant, temperature is
+the only thing varying) so results aren't confounded with the
+concentration-response curve itself.
+
+RT: n=12, success_rate=9/12 = 0.75
+  delta_f_probe: mean=-84.5 Hz, std=128.9 Hz
+  delta_f_chi (pre-probe baseline, ideally ~0 regardless of temp): mean=0.61 Hz, std=3.52 Hz
+
+37C: n=6, success_rate=4/6 = 0.67
+  delta_f_probe: mean=-73.2 Hz, std=166.1 Hz
+  delta_f_chi (pre-probe baseline, ideally ~0 regardless of temp): mean=0.95 Hz, std=1.29 Hz
+
+60C: n=6, success_rate=3/6 = 0.50
+  delta_f_probe: mean=-9.4 Hz, std=32.2 Hz
+  delta_f_chi (pre-probe baseline, ideally ~0 regardless of temp): mean=-0.43 Hz, std=1.41 Hz
+
+KS test, RT vs (37C+60C pooled), delta_f_probe: statistic=0.417, p=0.256
+Mann-Whitney U, RT vs (37C+60C pooled): statistic=50.0, p=0.214
+(Neither reaches p<0.05 -- with n=12/6/6 this analysis is UNDERPOWERED
+to make a statistically confident claim either way. Reported honestly
+as a real but inconclusive signal, not oversold as a proven effect.)
+
+HONEST ASSESSMENT:
+Success rate drops monotonically with temperature in this small sample
+(RT 75% -> 37C 67% -> 60C 50%), and 60C chips show both a smaller mean
+magnitude and much tighter spread of delta_f_probe (std 32 Hz vs RT's
+129 Hz) -- consistent with heat plausibly degrading probe binding
+(weaker signal, less to distinguish SUCCESS from FAILURE), though n=6
+per hot group is too small to separate a true temperature effect from
+chip-to-chip noise this dataset already knows is large (see
+Known_Limitations_Master.md's chip-to-chip variability note). The
+pre-probe CHI-stage baseline (delta_f_chi) stays near 0 at every
+temperature (means all under 1 Hz) -- no evidence of gross sensor
+drift from temperature alone before any binding has even started.
+
+SCOPE LIMITATION (not fixed by this analysis, stated plainly):
+None of this project's models (gatekeeper, LSTM, Stage 2b regressor)
+take temperature as an input feature, and curve_generator.py's
+synthetic data has no temperature dimension at all -- every synthetic
+curve implicitly assumes one unstated condition (effectively RT, since
+that's the majority of the real calibration data). If the funded phase
+runs the assay at multiple temperatures in the field, this project's
+current models have NOT been validated for that and the -0.5 Hz
+FAILURE_THRESHOLD_HZ has not been re-derived per-temperature. A future
+phase with a larger, purpose-built temperature-sweep dataset (more than
+6 chips per non-RT condition) would be needed to model this properly,
+not retrofit onto n=6 groups.

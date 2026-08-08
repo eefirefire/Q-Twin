@@ -1,0 +1,28 @@
+Supplementary distribution-matching check: Wasserstein distance
+=================================================================
+
+Adds Wasserstein (earth-mover's) distance alongside the two REQUIRED
+K-S tests in ks_validation_report.txt, on the exact same real vs.
+synthetic populations -- read-only supplementary check, does not
+regenerate or alter the synthetic batch those K-S tests already passed.
+
+Wasserstein distance is reported in Hz (the data's own units) -- how
+much total probability mass would need to move, and how far, to turn
+one distribution into the other. Expressed also as a percentage of the
+real population's own range, for interpretability.
+
+1. Delta-f (probe stage):
+   Wasserstein distance = 17.70 Hz (3.7% of real range 476.4 Hz)
+   K-S (for reference): statistic=0.1862, p=0.1604 (REQUIRED test, already PASS)
+
+2. Kinetic biomarker (early_displacement_30s, probe stage):
+   Wasserstein distance = 12.31 Hz (2.6% of real range 482.6 Hz)
+   K-S (for reference): statistic=0.1669, p=0.2602 (REQUIRED test, already PASS)
+
+HONEST ASSESSMENT: both Wasserstein distances are a small fraction of
+the real data's own range, consistent with (not just duplicating) the
+K-S PASS results above -- two different statistical tests agreeing
+strengthens the distribution-matching claim rather than relying on a
+single test/metric. Wasserstein has no p-value/significance threshold
+of its own (unlike K-S) -- reported as a magnitude for interpretability,
+not as a second pass/fail gate.

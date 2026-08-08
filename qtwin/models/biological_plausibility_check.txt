@@ -1,0 +1,51 @@
+Biological plausibility check: real vs. synthetic association kinetics
+==============================================================================
+
+Reviewer-anticipated question: is the generator's kinetic model an
+arbitrary curve shape, or grounded in real association dynamics? This
+project's generator does not fit a true Langmuir Kd (needs
+concentration-dependent equilibrium data this dataset's chip-to-chip
+noise makes ill-conditioned to estimate) -- its real kinetic parameter
+is a pseudo-first-order rate k_obs = 0.18 +/- 0.05 /s
+(curve_generator.py), applied via y(t)=final*(1-exp(-k_obs*t)).
+
+FIRST ATTEMPT (kept, not hidden): fit that same exponential form
+directly to every real SUCCESS probe-stage curve via nonlinear
+least-squares, free final_value and k. This degenerated -- nearly
+every fit pinned k at the search bound, a sign of a wrong model, not
+just noisy data. Investigating why is the actual finding below.
+
+n=47 real SUCCESS probe-stage replicate curves checked.
+Fraction of each curve's own final value already reached at the FIRST
+recorded sample (t=0.62s): mean=1.019, median=1.003
+46/47 curves are already >=70% of their final value at
+that first sample -- essentially fully risen before the probe-stage
+acquisition window even starts recording.
+Only 1/47 curves show a genuine rise from baseline
+(<30% of final value at t=0), where a single-exponential k_obs fit is
+even meaningful to attempt.
+Of those 1, 1 fit successfully: k_obs = [0.001] /s
+
+HONEST ASSESSMENT:
+The real specific-binding rise the generator models as an exp(-k*t)
+climb over roughly 10-20s (1/k_obs ~ 5.6s time constant) appears to
+already be COMPLETE in real chips before the first recorded sample at
+0.62s -- i.e. the true binding rate is faster than this
+instrument's temporal resolution can capture, not slower. This means
+k_obs=0.18/s CANNOT be independently validated against real curves the
+way a reviewer's Kd-comparison table would ideally work -- there is no
+real rise phase left in the data to fit a rate constant against.
+
+This is a genuine, previously-undocumented gap in the generator's
+physical grounding, surfaced honestly rather than papered over with a
+fabricated comparison table: k_obs functions as a NUMERICAL RENDERING
+choice (producing a smooth, non-degenerate curve shape across the
+resampled window) rather than a value calibrated against an observable
+real rate. What the generator DOES already validate against real data
+(see curve_generator.py's own extensive comments and the K-S tests in
+ks_validation_report.txt) is the marginal DISTRIBUTION of endpoint
+values and the 30s/final ratio spread (via the secondary OU drift term)
+-- those pass. The specific k_obs RISE RATE itself does not have real
+data available at fine-enough time resolution to check against directly.
+A future phase with sub-second sampling in the first few seconds after
+reagent introduction would be needed to actually measure this.

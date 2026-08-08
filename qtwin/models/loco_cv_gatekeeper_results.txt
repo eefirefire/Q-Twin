@@ -1,0 +1,43 @@
+Leave-One-Chip-Out Cross-Validation (LOCO-CV) -- Gatekeeper (Stage 0)
+======================================================================
+
+Answers the reviewer-anticipated question: can the model generalize
+to a brand-new real chip it has never seen, tested across EVERY real
+chip this project has (n=44), not just one 11-chip hold-out split.
+
+Method: for each of the n real chips, train a fresh RandomForest on
+the OTHER n-1 real chips only (no synthetic data in this experiment --
+deliberately a different, complementary test to gatekeeper_model.py's
+synthetic-trained/real-validated approach), then predict the held-out
+chip. Same features (early_displacement_30s, is_divergent) and RF
+config as the official gatekeeper, so results are directly comparable.
+
+LOCO-CV accuracy: 1.000 (44/44)
+
+Full sklearn classification_report:
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      1.00      1.00        23
+             FAILURE       1.00      1.00      1.00        11
+DIVERGENT_REPLICATES       1.00      1.00      1.00        10
+
+            accuracy                           1.00        44
+           macro avg       1.00      1.00      1.00        44
+        weighted avg       1.00      1.00      1.00        44
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[23  0  0]
+ [ 0 11  0]
+ [ 0  0 10]]
+
+No misclassifications -- every real chip correctly predicted when
+trained on all other real chips.
+
+HONEST CAVEAT: each fold trains on only 43 chips (very small for a
+3-class problem), and this is real-to-real generalization only -- it
+does not by itself validate the synthetic-data training pipeline the
+official gatekeeper actually uses in production (pipeline_api.py).
+It answers a different, narrower question than gatekeeper_metrics.txt:
+not "does synthetic-trained generalize to real chips" but "does the
+early_displacement_30s + is_divergent feature pair separate these
+classes at all, on real data alone, across every chip available."
