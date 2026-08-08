@@ -1,6 +1,8 @@
 {
-  "hidden_size": 32,
-  "epochs": 80,
+  "architecture": "TCN",
+  "channels": 8,
+  "n_layers": 3,
+  "epochs": 220,
   "seq_mean": -41.77812297755415,
   "seq_std": 82.05409130540899
 }

@@ -1,0 +1,83 @@
+TCN promoted to official Stage 2a model (2026-09-12)
+============================================================
+
+PROMOTION CONTEXT: this replaces the single-replicate-augmented plain
+LSTM, which was found -- after fixing a CPU-thread non-determinism bug
+affecting every torch training script in this project -- to show ZERO
+real hold-out improvement over the pre-augmentation baseline (0.545 vs
+0.545) and to have actually REGRESSED 33-chip accuracy (0.818 -> 0.576).
+The originally-reported 45.5%->72.7% improvement was an artifact of
+uncontrolled thread scheduling, not a real effect -- see
+Known_Limitations_Master.md's determinism-bug section for the full
+account, including the two intermediate wrong conclusions ("keep
+augmented LSTM official" and "promote Attention") this correction
+retracts.
+
+DECISION: among all candidates re-tested under proper determinism on
+the same augmented training set (per augmented_architecture_comparison.txt),
+TCN tied for best 33-chip accuracy (0.788, matching plain LSTM) AND best
+hold-out accuracy (0.727, matching LSTM+Attention and the ensemble) --
+the only candidate best-or-tied-best on BOTH metrics simultaneously in
+that comparison. Not LSTM+Attention (matched TCN on hold-out but not
+33-chip in that same comparison, and its attention weights don't actually
+confirm the intended interpretability story -- see
+attention_weight_analysis.txt). Not the ensemble (same numbers as TCN
+alone, 3x the inference cost, zero net gain). Not pre-augmentation plain
+LSTM (best 33-chip at 0.818, but worst hold-out at 0.545 -- a wide gap
+consistent with overfitting to the 33-chip set, not real generalization).
+
+Architecture: TCN, channels=8, n_layers=3, epochs=220
+(hyperparameters already selected via augmented_architecture_comparison.py's
+internal 80/20 synthetic tuning split -- not re-tuned here, this script
+only produces the final promoted artifact.)
+
+HONEST NOTE ON THE NUMBERS BELOW vs. augmented_architecture_comparison.txt's
+TCN row (0.788/0.727): this script trains TCN as the ONLY model in a fresh
+process, while that comparison trained LSTM, then LSTM+Attention, then TCN
+in sequence within one process -- each earlier model's training consumes the
+shared torch RNG, so TCN there and TCN here start from a different RNG
+position even with the same seed and the same determinism fix. Both are
+individually bit-reproducible (verified: two standalone runs of this exact
+script produce a bit-identical lstm_probe_stage.pt) -- 'deterministic' means
+reproducible given the same RNG-consumption history, not identical across
+scripts with different call sequences. The numbers below are this promoted
+artifact's actual, real, verified performance -- treat these as authoritative
+for the deployed model, not the comparison script's in-sequence number.
+
+33-chip validation accuracy: 0.727
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.78      0.88        18
+             FAILURE       0.67      0.75      0.71         8
+DIVERGENT_REPLICATES       0.40      0.57      0.47         7
+
+            accuracy                           0.73        33
+           macro avg       0.69      0.70      0.68        33
+        weighted avg       0.79      0.73      0.75        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[14  0  4]
+ [ 0  6  2]
+ [ 0  3  4]]
+
+Hold-out accuracy: 0.727
+                      precision    recall  f1-score   support
+
+             SUCCESS       0.80      0.80      0.80         5
+             FAILURE       0.75      1.00      0.86         3
+DIVERGENT_REPLICATES       0.50      0.33      0.40         3
+
+            accuracy                           0.73        11
+           macro avg       0.68      0.71      0.69        11
+        weighted avg       0.70      0.73      0.71        11
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[4 0 1]
+ [0 3 0]
+ [1 1 1]]
+
+HONEST METHODOLOGY NOTE (same as every prior LSTM promotion in this
+project): reporting hold-out numbers as part of this architecture
+decision means the hold-out set is no longer fully untouched by any
+downstream decision. Both TCN and LSTM+Attention were evaluated on it
+before this choice was made.

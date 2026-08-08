@@ -5,24 +5,18 @@ PART 1 -- learning rate x dropout, LSTM+Attention (Task 5 winner),
 hidden_size=32 fixed (Week 4's selected value), internal 80/20
 synthetic tuning split only -- never peeking at real validation accuracy.
 
-  lr=0.0010 dropout=0.1: internal tuning-split accuracy = 0.548
-  lr=0.0010 dropout=0.2: internal tuning-split accuracy = 0.516
-  lr=0.0010 dropout=0.4: internal tuning-split accuracy = 0.516
-  lr=0.0100 dropout=0.1: internal tuning-split accuracy = 0.484
-  lr=0.0100 dropout=0.2: internal tuning-split accuracy = 0.548
-  lr=0.0100 dropout=0.4: internal tuning-split accuracy = 0.516
+  lr=0.0010 dropout=0.1: internal tuning-split accuracy = 0.484
+  lr=0.0010 dropout=0.2: internal tuning-split accuracy = 0.548
+  lr=0.0010 dropout=0.4: internal tuning-split accuracy = 0.645
+  lr=0.0100 dropout=0.1: internal tuning-split accuracy = 0.516
+  lr=0.0100 dropout=0.2: internal tuning-split accuracy = 0.613
+  lr=0.0100 dropout=0.4: internal tuning-split accuracy = 0.548
   lr=0.0500 dropout=0.1: internal tuning-split accuracy = 0.516
   lr=0.0500 dropout=0.2: internal tuning-split accuracy = 0.516
-  lr=0.0500 dropout=0.4: internal tuning-split accuracy = 0.484
+  lr=0.0500 dropout=0.4: internal tuning-split accuracy = 0.516
 
-Selected: lr=0.001, dropout=0.1 (internal accuracy 0.548)
-Week 4's defaults (lr=1e-2, dropout=0.2) were already in this grid and TIED for
-the best internal-split score (0.548, not beaten) -- so this sweep confirms the
-existing defaults are already a reasonable choice rather than finding a clearly
-better one. Picking lr=0.001/dropout=0.1 over the tied default is arbitrary
-(first-encountered in the sweep, not evidence of a real improvement); worth
-running the real-validation comparison before switching away from the
-already-validated lr=1e-2/dropout=0.2 in lstm_config.json.
+Selected: lr=0.001, dropout=0.4 (internal accuracy 0.645)
+Week 4's defaults (lr=1e-2, dropout=0.2) were already in this grid -- a different combination scored higher on the internal split, worth adopting.
 
 PART 2 -- sequence window length (currently 45s/60 points): is it the
 best choice, or just the first one tried?

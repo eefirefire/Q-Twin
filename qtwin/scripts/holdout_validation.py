@@ -146,9 +146,14 @@ def main():
     # 33-chip number for the corrected model yet -- reporting the stale one next
     # to this run's number would misleadingly imply an apples-to-apples
     # comparison. Caught during an independent review; not silently carried over.
+    # lstm_acc updated 2026-09-12: official model is now TCN (trained on the
+    # single-replicate-augmented set), promoted after a CPU-thread
+    # non-determinism bug was found and fixed across every torch training
+    # script -- see tcn_official_metrics.txt / Known_Limitations_Master.md's
+    # Stage 2a determinism section for the full account.
     known_33chip = {
         "gatekeeper_acc": 1.000,
-        "lstm_acc": 0.758,
+        "lstm_acc": 0.727,
         "target_mae": 5.35,
     }
 

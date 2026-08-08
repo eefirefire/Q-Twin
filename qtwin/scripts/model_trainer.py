@@ -57,6 +57,13 @@ MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
 torch.manual_seed(20260810)
+# Determinism fix (2026-09-12, caught during independent review): manual_seed
+# alone does not make CPU LSTM training bit-reproducible -- PyTorch's default
+# multi-threaded CPU execution has non-deterministic float reduction order,
+# which compounds over training into meaningfully different results run to
+# run. Verified fix: pinning both of these makes repeated runs bit-identical.
+torch.set_num_threads(1)
+torch.use_deterministic_algorithms(True)
 LABEL_TO_IDX = {label: i for i, label in enumerate(LABELS)}
 
 

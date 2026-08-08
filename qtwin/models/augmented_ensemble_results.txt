@@ -14,9 +14,9 @@ Currently-promoted official model: single-replicate-augmented LSTM,
 
 Individual models in this ensemble (same run, same tuning, feeds the
 ensemble below):
-  LSTM (baseline)       33chip=0.788  holdout=0.727
-  LSTM+Attention        33chip=0.667  holdout=0.636
-  TCN                   33chip=0.758  holdout=0.636
+  LSTM (baseline)       33chip=0.788  holdout=0.545
+  LSTM+Attention        33chip=0.727  holdout=0.727
+  TCN                   33chip=0.788  holdout=0.727
 
 ENSEMBLE (soft-vote, mean of all 3 softmax outputs):
   33-chip accuracy: 0.788

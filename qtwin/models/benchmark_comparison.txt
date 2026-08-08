@@ -44,8 +44,8 @@ DIVERGENT_REPLICATES       0.37      1.00      0.54         7
         weighted avg       0.62      0.64      0.59        33
 Confusion matrix: [[14, 0, 4], [0, 0, 8], [0, 0, 7]]
 
-Official LSTM (lstm_metrics.txt):                    accuracy = 0.758
-Week 4 LSTM+Attention/TCN (lstm_tcn_comparison.txt): accuracy = 0.879
+Official LSTM (lstm_metrics.txt):                    accuracy = 0.818
+Week 4 LSTM+Attention/TCN (lstm_tcn_comparison.txt): accuracy = 0.788
 
 CONCLUSION: the sequence models beat the flattened-feature Random Forest baseline
 (0.636) at every stage -- genuine evidence that treating this as a

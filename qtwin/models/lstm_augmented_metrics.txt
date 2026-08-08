@@ -1,6 +1,26 @@
 LSTM improvement: single-replicate data augmentation
 ============================================================
 
+SUPERSEDED (2026-09-12): the "improvement" this file documents did not
+survive a determinism-bug fix. torch.manual_seed() alone does not make
+CPU-trained PyTorch models bit-reproducible; every torch training script
+in this project (including this one) only had that, not
+torch.set_num_threads(1) + torch.use_deterministic_algorithms(True).
+Under the fix, regenerating this exact model gives 0.576 / 33-chip (was
+0.758) and 0.545 / hold-out (was 0.727) -- i.e. ZERO real hold-out
+improvement over the pre-augmentation baseline (also 0.545 under the
+fix) and an actual REGRESSION in 33-chip accuracy. The 45.5%->72.7%
+headline result below was a thread-scheduling artifact, not a real
+effect of the augmentation technique. This file briefly caused the
+augmented plain LSTM to be promoted to official, and a "keep it
+official" instruction to be given in conversation, before the bug was
+caught -- both retracted. TCN (also trained on the augmented set) is now
+the official model -- see tcn_official_metrics.txt. Kept as historical
+record of the (incorrect) original claim and the reasoning that produced
+it, per this project's standing practice of not deleting superseded
+results. Full corrected account: Known_Limitations_Master.md's Stage 2a
+determinism section.
+
 Technique: added 155 single-replicate synthetic training sequences
 (augment_single_replicate_data.py) alongside the original 155
 two-replicate-averaged ones, directly targeting the diagnosed root
@@ -13,50 +33,50 @@ Training set: 310 sequences (310 = 155 original + 155 augmentation).
 Tuning: same hidden_size x epochs grid, same internal 80/20 synthetic
 split discipline as model_trainer.py -- never selecting hyperparameters
 by peeking at real validation accuracy.
-  hidden_size= 16 epochs= 80: internal tuning-split accuracy = 0.677
-  hidden_size= 16 epochs=150: internal tuning-split accuracy = 0.661
+  hidden_size= 16 epochs= 80: internal tuning-split accuracy = 0.661
+  hidden_size= 16 epochs=150: internal tuning-split accuracy = 0.677
   hidden_size= 16 epochs=220: internal tuning-split accuracy = 0.677
   hidden_size= 32 epochs= 80: internal tuning-split accuracy = 0.694
-  hidden_size= 32 epochs=150: internal tuning-split accuracy = 0.694
-  hidden_size= 32 epochs=220: internal tuning-split accuracy = 0.661
-  hidden_size= 64 epochs= 80: internal tuning-split accuracy = 0.677
-  hidden_size= 64 epochs=150: internal tuning-split accuracy = 0.677
+  hidden_size= 32 epochs=150: internal tuning-split accuracy = 0.645
+  hidden_size= 32 epochs=220: internal tuning-split accuracy = 0.677
+  hidden_size= 64 epochs= 80: internal tuning-split accuracy = 0.710
+  hidden_size= 64 epochs=150: internal tuning-split accuracy = 0.629
   hidden_size= 64 epochs=220: internal tuning-split accuracy = 0.694
-Selected hidden_size=32, epochs=80.
+Selected hidden_size=64, epochs=80.
 
 ------------------------------------------------------------
 BEFORE (official LSTM, lstm_metrics.txt): 33-chip accuracy = 0.758, hold-out accuracy = 0.455
 
 AFTER (this augmented model):
-33-chip validation accuracy: 0.758
+33-chip validation accuracy: 0.576
                       precision    recall  f1-score   support
 
-             SUCCESS       1.00      0.78      0.88        18
-             FAILURE       0.70      0.88      0.78         8
-DIVERGENT_REPLICATES       0.44      0.57      0.50         7
+             SUCCESS       1.00      0.44      0.62        18
+             FAILURE       0.57      1.00      0.73         8
+DIVERGENT_REPLICATES       0.27      0.43      0.33         7
 
-            accuracy                           0.76        33
-           macro avg       0.71      0.74      0.72        33
-        weighted avg       0.81      0.76      0.77        33
+            accuracy                           0.58        33
+           macro avg       0.61      0.62      0.56        33
+        weighted avg       0.74      0.58      0.58        33
 
 Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
-[[14  0  4]
- [ 0  7  1]
- [ 0  3  4]]
+[[8 2 8]
+ [0 8 0]
+ [0 4 3]]
 
-Hold-out accuracy: 0.727
+Hold-out accuracy: 0.545
                       precision    recall  f1-score   support
 
-             SUCCESS       0.80      0.80      0.80         5
+             SUCCESS       0.67      0.40      0.50         5
              FAILURE       0.75      1.00      0.86         3
-DIVERGENT_REPLICATES       0.50      0.33      0.40         3
+DIVERGENT_REPLICATES       0.25      0.33      0.29         3
 
-            accuracy                           0.73        11
-           macro avg       0.68      0.71      0.69        11
-        weighted avg       0.70      0.73      0.71        11
+            accuracy                           0.55        11
+           macro avg       0.56      0.58      0.55        11
+        weighted avg       0.58      0.55      0.54        11
 
 Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
-[[4 0 1]
+[[2 0 3]
  [0 3 0]
  [1 1 1]]
 

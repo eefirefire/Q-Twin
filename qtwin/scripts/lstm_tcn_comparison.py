@@ -44,6 +44,9 @@ from sequence_architectures import LSTMAttention, TCN
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
 torch.manual_seed(20260822)  # Week 4 start date
+# Determinism fix (2026-09-12) -- see model_trainer.py's matching comment.
+torch.set_num_threads(1)
+torch.use_deterministic_algorithms(True)
 
 
 def train_generic(model_ctor, model_kwargs, X_train, y_train, epochs, lr=1e-2):

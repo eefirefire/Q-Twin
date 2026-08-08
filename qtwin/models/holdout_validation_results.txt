@@ -30,7 +30,7 @@ Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'D
 
 ------------------------------------------------------------
 LSTM (Task 3, official model)
-Hold-out accuracy: 0.727  (33-chip validation accuracy: 0.758)
+Hold-out accuracy: 0.727  (33-chip validation accuracy: 0.727)
                       precision    recall  f1-score   support
 
              SUCCESS       0.80      0.80      0.80         5
@@ -75,7 +75,7 @@ Per-chip detail:
 ------------------------------------------------------------
 HONEST ASSESSMENT:
 Gatekeeper: HOLDS on genuinely blind data (1.000 -> 1.000, gap=+0.000).
-LSTM: DROPS on genuinely blind data (0.758 -> 0.727, gap=+0.031).
+LSTM: HOLDS on genuinely blind data (0.727 -> 0.727, gap=-0.000).
 n=11 is a small hold-out set -- treat any single-chip miss as a large swing
 in the reported percentage (each chip is ~9% of the total), not as strong
 statistical evidence on its own. Reported as-is regardless of which

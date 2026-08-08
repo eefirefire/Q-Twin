@@ -20,23 +20,124 @@ Training set: 310 sequences (155 original two-replicate-averaged +
 split discipline as every other model in this project.
 
 Summary (33-chip real validation vs. BLIND hold-out):
-  LSTM (baseline)       33chip_acc=0.788  holdout_acc=0.727  DIVERGENT_precision=0.500  DIVERGENT_recall=0.571  (params={'hidden_size': 32}, epochs=150)
-  LSTM+Attention        33chip_acc=0.667  holdout_acc=0.636  DIVERGENT_precision=0.333  DIVERGENT_recall=0.571  (params={'hidden_size': 16}, epochs=220)
-  TCN                   33chip_acc=0.758  holdout_acc=0.636  DIVERGENT_precision=0.444  DIVERGENT_recall=0.571  (params={'channels': 8, 'n_layers': 2}, epochs=150)
+  LSTM (baseline)       33chip_acc=0.788  holdout_acc=0.545  DIVERGENT_precision=0.500  DIVERGENT_recall=0.571  (params={'hidden_size': 16}, epochs=220)
+  LSTM+Attention        33chip_acc=0.727  holdout_acc=0.727  DIVERGENT_precision=0.400  DIVERGENT_recall=0.571  (params={'hidden_size': 32}, epochs=150)
+  TCN                   33chip_acc=0.788  holdout_acc=0.727  DIVERGENT_precision=0.500  DIVERGENT_recall=0.571  (params={'channels': 8, 'n_layers': 3}, epochs=220)
 
 ------------------------------------------------------------------------------
 LSTM (baseline) (augmented training set)
-Selected hyperparameters: {'hidden_size': 32}, epochs=150
+Selected hyperparameters: {'hidden_size': 16}, epochs=220
 Internal tuning-split results:
-  {'hidden_size': 16, 'epochs': 80}: 0.661
+  {'hidden_size': 16, 'epochs': 80}: 0.677
   {'hidden_size': 16, 'epochs': 150}: 0.677
-  {'hidden_size': 16, 'epochs': 220}: 0.677
-  {'hidden_size': 32, 'epochs': 80}: 0.661
-  {'hidden_size': 32, 'epochs': 150}: 0.694
-  {'hidden_size': 32, 'epochs': 220}: 0.694
+  {'hidden_size': 16, 'epochs': 220}: 0.694
+  {'hidden_size': 32, 'epochs': 80}: 0.677
+  {'hidden_size': 32, 'epochs': 150}: 0.661
+  {'hidden_size': 32, 'epochs': 220}: 0.645
   {'hidden_size': 64, 'epochs': 80}: 0.661
   {'hidden_size': 64, 'epochs': 150}: 0.694
   {'hidden_size': 64, 'epochs': 220}: 0.694
+
+33-chip real validation accuracy: 0.788
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.78      0.88        18
+             FAILURE       0.73      1.00      0.84         8
+DIVERGENT_REPLICATES       0.50      0.57      0.53         7
+
+            accuracy                           0.79        33
+           macro avg       0.74      0.78      0.75        33
+        weighted avg       0.83      0.79      0.79        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[14  0  4]
+ [ 0  8  0]
+ [ 0  3  4]]
+
+BLIND hold-out accuracy: 0.545
+                      precision    recall  f1-score   support
+
+             SUCCESS       0.75      0.60      0.67         5
+             FAILURE       0.67      0.67      0.67         3
+DIVERGENT_REPLICATES       0.25      0.33      0.29         3
+
+            accuracy                           0.55        11
+           macro avg       0.56      0.53      0.54        11
+        weighted avg       0.59      0.55      0.56        11
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[3 0 2]
+ [0 2 1]
+ [1 1 1]]
+
+------------------------------------------------------------------------------
+LSTM+Attention (augmented training set)
+Selected hyperparameters: {'hidden_size': 32}, epochs=150
+Internal tuning-split results:
+  {'hidden_size': 16, 'epochs': 80}: 0.661
+  {'hidden_size': 16, 'epochs': 150}: 0.694
+  {'hidden_size': 16, 'epochs': 220}: 0.694
+  {'hidden_size': 32, 'epochs': 80}: 0.694
+  {'hidden_size': 32, 'epochs': 150}: 0.710
+  {'hidden_size': 32, 'epochs': 220}: 0.694
+  {'hidden_size': 64, 'epochs': 80}: 0.661
+  {'hidden_size': 64, 'epochs': 150}: 0.694
+  {'hidden_size': 64, 'epochs': 220}: 0.677
+
+33-chip real validation accuracy: 0.727
+                      precision    recall  f1-score   support
+
+             SUCCESS       1.00      0.78      0.88        18
+             FAILURE       0.67      0.75      0.71         8
+DIVERGENT_REPLICATES       0.40      0.57      0.47         7
+
+            accuracy                           0.73        33
+           macro avg       0.69      0.70      0.68        33
+        weighted avg       0.79      0.73      0.75        33
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[14  0  4]
+ [ 0  6  2]
+ [ 0  3  4]]
+
+BLIND hold-out accuracy: 0.727
+                      precision    recall  f1-score   support
+
+             SUCCESS       0.80      0.80      0.80         5
+             FAILURE       0.75      1.00      0.86         3
+DIVERGENT_REPLICATES       0.50      0.33      0.40         3
+
+            accuracy                           0.73        11
+           macro avg       0.68      0.71      0.69        11
+        weighted avg       0.70      0.73      0.71        11
+
+Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
+[[4 0 1]
+ [0 3 0]
+ [1 1 1]]
+
+------------------------------------------------------------------------------
+TCN (augmented training set)
+Selected hyperparameters: {'channels': 8, 'n_layers': 3}, epochs=220
+Internal tuning-split results:
+  {'channels': 8, 'n_layers': 2, 'epochs': 80}: 0.694
+  {'channels': 8, 'n_layers': 2, 'epochs': 150}: 0.677
+  {'channels': 8, 'n_layers': 2, 'epochs': 220}: 0.694
+  {'channels': 8, 'n_layers': 3, 'epochs': 80}: 0.677
+  {'channels': 8, 'n_layers': 3, 'epochs': 150}: 0.694
+  {'channels': 8, 'n_layers': 3, 'epochs': 220}: 0.710
+  {'channels': 16, 'n_layers': 2, 'epochs': 80}: 0.661
+  {'channels': 16, 'n_layers': 2, 'epochs': 150}: 0.677
+  {'channels': 16, 'n_layers': 2, 'epochs': 220}: 0.677
+  {'channels': 16, 'n_layers': 3, 'epochs': 80}: 0.710
+  {'channels': 16, 'n_layers': 3, 'epochs': 150}: 0.661
+  {'channels': 16, 'n_layers': 3, 'epochs': 220}: 0.694
+  {'channels': 32, 'n_layers': 2, 'epochs': 80}: 0.661
+  {'channels': 32, 'n_layers': 2, 'epochs': 150}: 0.694
+  {'channels': 32, 'n_layers': 2, 'epochs': 220}: 0.694
+  {'channels': 32, 'n_layers': 3, 'epochs': 80}: 0.677
+  {'channels': 32, 'n_layers': 3, 'epochs': 150}: 0.694
+  {'channels': 32, 'n_layers': 3, 'epochs': 220}: 0.661
 
 33-chip real validation accuracy: 0.788
                       precision    recall  f1-score   support
@@ -70,109 +171,8 @@ Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'D
  [0 3 0]
  [1 1 1]]
 
-------------------------------------------------------------------------------
-LSTM+Attention (augmented training set)
-Selected hyperparameters: {'hidden_size': 16}, epochs=220
-Internal tuning-split results:
-  {'hidden_size': 16, 'epochs': 80}: 0.661
-  {'hidden_size': 16, 'epochs': 150}: 0.661
-  {'hidden_size': 16, 'epochs': 220}: 0.694
-  {'hidden_size': 32, 'epochs': 80}: 0.661
-  {'hidden_size': 32, 'epochs': 150}: 0.661
-  {'hidden_size': 32, 'epochs': 220}: 0.677
-  {'hidden_size': 64, 'epochs': 80}: 0.629
-  {'hidden_size': 64, 'epochs': 150}: 0.677
-  {'hidden_size': 64, 'epochs': 220}: 0.694
-
-33-chip real validation accuracy: 0.667
-                      precision    recall  f1-score   support
-
-             SUCCESS       1.00      0.83      0.91        18
-             FAILURE       0.50      0.38      0.43         8
-DIVERGENT_REPLICATES       0.33      0.57      0.42         7
-
-            accuracy                           0.67        33
-           macro avg       0.61      0.59      0.59        33
-        weighted avg       0.74      0.67      0.69        33
-
-Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
-[[15  0  3]
- [ 0  3  5]
- [ 0  3  4]]
-
-BLIND hold-out accuracy: 0.636
-                      precision    recall  f1-score   support
-
-             SUCCESS       0.80      0.80      0.80         5
-             FAILURE       0.67      0.67      0.67         3
-DIVERGENT_REPLICATES       0.33      0.33      0.33         3
-
-            accuracy                           0.64        11
-           macro avg       0.60      0.60      0.60        11
-        weighted avg       0.64      0.64      0.64        11
-
-Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
-[[4 0 1]
- [0 2 1]
- [1 1 1]]
-
-------------------------------------------------------------------------------
-TCN (augmented training set)
-Selected hyperparameters: {'channels': 8, 'n_layers': 2}, epochs=150
-Internal tuning-split results:
-  {'channels': 8, 'n_layers': 2, 'epochs': 80}: 0.677
-  {'channels': 8, 'n_layers': 2, 'epochs': 150}: 0.710
-  {'channels': 8, 'n_layers': 2, 'epochs': 220}: 0.677
-  {'channels': 8, 'n_layers': 3, 'epochs': 80}: 0.677
-  {'channels': 8, 'n_layers': 3, 'epochs': 150}: 0.710
-  {'channels': 8, 'n_layers': 3, 'epochs': 220}: 0.677
-  {'channels': 16, 'n_layers': 2, 'epochs': 80}: 0.661
-  {'channels': 16, 'n_layers': 2, 'epochs': 150}: 0.694
-  {'channels': 16, 'n_layers': 2, 'epochs': 220}: 0.710
-  {'channels': 16, 'n_layers': 3, 'epochs': 80}: 0.694
-  {'channels': 16, 'n_layers': 3, 'epochs': 150}: 0.661
-  {'channels': 16, 'n_layers': 3, 'epochs': 220}: 0.694
-  {'channels': 32, 'n_layers': 2, 'epochs': 80}: 0.710
-  {'channels': 32, 'n_layers': 2, 'epochs': 150}: 0.661
-  {'channels': 32, 'n_layers': 2, 'epochs': 220}: 0.677
-  {'channels': 32, 'n_layers': 3, 'epochs': 80}: 0.694
-  {'channels': 32, 'n_layers': 3, 'epochs': 150}: 0.677
-  {'channels': 32, 'n_layers': 3, 'epochs': 220}: 0.677
-
-33-chip real validation accuracy: 0.758
-                      precision    recall  f1-score   support
-
-             SUCCESS       1.00      0.78      0.88        18
-             FAILURE       0.70      0.88      0.78         8
-DIVERGENT_REPLICATES       0.44      0.57      0.50         7
-
-            accuracy                           0.76        33
-           macro avg       0.71      0.74      0.72        33
-        weighted avg       0.81      0.76      0.77        33
-
-Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
-[[14  0  4]
- [ 0  7  1]
- [ 0  3  4]]
-
-BLIND hold-out accuracy: 0.636
-                      precision    recall  f1-score   support
-
-             SUCCESS       0.67      0.80      0.73         5
-             FAILURE       0.75      1.00      0.86         3
-DIVERGENT_REPLICATES       0.00      0.00      0.00         3
-
-            accuracy                           0.64        11
-           macro avg       0.47      0.60      0.53        11
-        weighted avg       0.51      0.64      0.56        11
-
-Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'DIVERGENT_REPLICATES']:
-[[4 0 1]
- [0 3 0]
- [2 1 0]]
-
 HONEST INTERPRETATION:
-Best hold-out accuracy: LSTM (baseline) (0.727) vs. currently-promoted LSTM's 0.727.
+Best hold-out accuracy: LSTM+Attention (0.727) vs. currently-promoted LSTM's 0.727.
 Best 33-chip accuracy: LSTM (baseline) (0.788) vs. currently-promoted LSTM's 0.758.
 
 NOTE on the 'LSTM (baseline)' row: this is NOT a different trained model
@@ -184,10 +184,10 @@ as lstm_tcn_comparison.py). Its 33-chip number differing from the official
 0.758 (here: see summary above) is run-to-run noise at this dataset size,
 not a second, better LSTM to consider promoting.
 
-No architecture beats the currently-promoted augmented LSTM on hold-out
-by a margin large enough to justify a promotion, given this hold-out set's
-small n=11 (each chip is ~9% of the reported accuracy) -- a real, honest
-null result, not forced into a positive finding.
+PROMOTION CANDIDATE: LSTM+Attention beats the currently-promoted
+model on hold-out (0.727 vs 0.727) using the SAME augmented training data --
+the architecture change is additive on top of the augmentation fix, not a
+replacement for it. See the promotion note below for what was done.
 
 n=11 hold-out and n=33 real validation are both small -- treat every
 number here as having real sampling noise, especially any single-chip

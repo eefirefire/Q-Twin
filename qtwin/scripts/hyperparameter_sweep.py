@@ -33,6 +33,9 @@ from sequence_architectures import LSTMAttention
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
 torch.manual_seed(20260908)
+# Determinism fix (2026-09-12) -- see model_trainer.py's matching comment.
+torch.set_num_threads(1)
+torch.use_deterministic_algorithms(True)
 
 
 def train_with_dropout(hidden_size, dropout, lr, X_train, y_train, epochs=150):

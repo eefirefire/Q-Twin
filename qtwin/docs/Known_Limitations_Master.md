@@ -46,107 +46,131 @@ summarizes, it doesn't replace the originals as the source of truth.
 
 ## Stage 2a — Sequence model (LSTM / LSTM+Attention / TCN)
 
-- **PROMOTED (2026-09-12): single-replicate-augmented LSTM is now the
-  official model.** Root cause of the hold-out drop below was diagnosed:
-  the LSTM's accuracy on `SINGLE_REPLICATE` real chips was only 56.25%
-  (9/16) even in the 33-chip validation set, vs. 90-100% on
-  CONCORDANT/DIVERGENT chips — the synthetic training data
-  (`generate_probe_batch.py`) always averages two replicates per
-  sequence, so the model had never seen a genuine single-replicate noise
-  profile (mathematically noisier than an average of two: `Var(mean of
-  2 iid) = Var/2`). Real single-replicate curves were out-of-distribution
-  and defaulted to `DIVERGENT_REPLICATES`. Fixed by generating 155
-  additional single-replicate synthetic training sequences (labeled
-  SUCCESS/FAILURE only, never DIVERGENT_REPLICATES, matching exactly how
-  real single-replicate chips are labeled) and retraining on the combined
-  310-example set, same architecture/tuning discipline. **Result: blind
-  hold-out accuracy improved from 45.5% to 72.7%**, 33-chip accuracy held
-  at 75.8% (recall redistributed: FAILURE 0.62→0.88, DIVERGENT 1.00→0.57).
-  *Source: `lstm_augmented_metrics.txt`,
-  `augment_single_replicate_data.py`.*
-- **Methodology caveat on the above:** the root-cause diagnosis was
-  independently visible in the 33-chip validation set (56.25% there too),
-  not reverse-engineered from hold-out chip identities — but once
-  hold-out numbers are reported as part of choosing this fix, this
-  hold-out set can no longer be treated as fully untouched by any
-  downstream decision the way it was before. A second, still-untouched
-  hold-out set would be needed to fully confirm this generalizes.
-- **Superseded — official LSTM before this fix: 75.8% / 33-chip, 45.5% /
-  hold-out**, `DIVERGENT_REPLICATES` recall=1.00 but precision=0.47 —
-  over-triggered rather than missed. Kept as historical record. *Source:
-  `lstm_metrics.txt`.*
-- **LSTM+Attention and TCN both reach 87.9%** on the PRE-augmentation
-  33-chip comparison, `DIVERGENT_REPLICATES` precision improved to 0.636.
-  A within-comparison LSTM re-run scored 57.6% under a different seed,
-  showing real hyperparameter-selection noise at this dataset size.
-  *Source: `lstm_tcn_comparison.txt`.*
-- **RESOLVED (2026-09-12): re-ran LSTM+Attention/TCN on the augmented
-  310-sequence training set, evaluated on hold-out for the first time —
-  neither beats the plain augmented LSTM.** Closes the gap flagged just
-  above. Result: LSTM (baseline, retrained fresh) 33-chip=0.788/
-  hold-out=0.727; LSTM+Attention 33-chip=0.667/hold-out=0.636; TCN
-  33-chip=0.758/hold-out=0.636. **The attention/TCN advantage seen on the
-  PRE-augmentation data (87.9% vs 75.8%) does NOT transfer to the
-  augmented data** — on 310 sequences, the plain LSTM now matches or
-  beats both more complex architectures on every tracked metric. A real,
-  honest null result: augmentation and architecture complexity aren't
-  additive here, so the officially-promoted single-replicate-augmented
-  plain LSTM remains the best model found, not superseded. *Source:
-  `augmented_architecture_comparison.py`,
-  `augmented_architecture_comparison.txt`.*
-- **Follow-up: soft-vote ensemble (mean softmax across all 3 augmented
-  models) ties the plain LSTM exactly (33-chip=0.788, hold-out=0.727),
-  doesn't beat it.** Tested rather than assumed, since architectures
-  making different per-chip errors can sometimes make ensembling win even
-  when no single member does — here the plain LSTM's own predictions
-  dominate the average since it's already the strongest member, so
-  ensembling adds inference complexity for zero net gain. Another honest
-  null result: across every technique tried this project (augmentation,
-  architecture swap, ensembling), the single-replicate-augmented plain
-  LSTM remains the best-supported, simplest choice. *Source:
-  `augmented_ensemble.py`, `augmented_ensemble_results.txt`.*
+### DETERMINISM BUG: every Stage 2a result before 2026-09-12 needs re-reading through this lens
+
+**`torch.manual_seed()` alone does not make CPU-trained PyTorch models
+bit-reproducible.** PyTorch's default multi-threaded CPU execution
+(MKL/oneDNN intra-op parallelism) has non-deterministic floating-point
+reduction order — thread scheduling varies run to run, and small
+differences compound over training into meaningfully different final
+weights. Caught while regenerating an attention-weight plot: the exact
+same script and seeds produced different numbers on every fresh run, once
+even flipping a "CONSISTENT across 6 seeds / VERIFIED ROBUST" claim to
+"INCONSISTENT" (see the attention-weights entry below). Investigating the
+scope found this affected **every torch training script in the
+project** — `model_trainer.py`, `model_trainer_augmented.py`,
+`lstm_tcn_comparison.py`, `hyperparameter_sweep.py`,
+`augmented_architecture_comparison.py`, `augmented_ensemble.py` — all of
+which only ever called `torch.manual_seed()`. (sklearn-based scripts —
+`gatekeeper_model.py`, `regression_model.py`, `benchmark_comparison.py`,
+`loco_cv_gatekeeper.py` — set `random_state` with no `n_jobs`, i.e.
+already single-threaded, and were unaffected; confirmed reproducible
+throughout.) Fixed by adding `torch.set_num_threads(1)` +
+`torch.use_deterministic_algorithms(True)` to all six scripts, verified
+by running each 2–3 times and confirming bit-identical output files.
+
+**The practical impact was large, not cosmetic — two headline results
+this project reported were artifacts of thread-scheduling luck, not real
+effects, and both had already driven a wrong decision before the bug was
+caught:**
+
+1. **The single-replicate augmentation's "45.5% → 72.7% hold-out"
+   improvement did not survive.** Under proper determinism: pre-augmentation
+   plain LSTM = 0.818 / 33-chip, 0.545 / hold-out. Post-augmentation plain
+   LSTM (the model that was promoted to official on the strength of this
+   claim) = 0.576 / 33-chip, 0.545 / hold-out. **Zero real hold-out
+   improvement, and a real regression in 33-chip accuracy.** The
+   augmentation technique itself may still have conceptual merit (the
+   root-cause diagnosis — real `SINGLE_REPLICATE` chips being
+   out-of-distribution — was independently visible in the 33-chip set,
+   not just a hold-out artifact), but the specific numeric claim was
+   false, generated by an unlucky/lucky thread-scheduling draw, not by the
+   technique. **This directly contradicts a "keep the augmented LSTM
+   official" instruction given in this conversation before the bug was
+   found — retracted.**
+2. **LSTM+Attention/TCN's apparent loss to the plain LSTM on augmented
+   data also did not survive.** Under proper determinism (same augmented
+   310-sequence set, evaluated on both 33-chip and hold-out): plain LSTM =
+   0.788/0.545, LSTM+Attention = 0.727/0.727, TCN = 0.788/0.727. Attention
+   and TCN both genuinely beat the plain LSTM on hold-out. **This also
+   contradicts a "promote Attention" instruction given in this
+   conversation, on different (correct, for once) grounds than
+   originally proposed** — the attention-weight visualization does NOT
+   support the "model independently rediscovered the early-signal
+   insight" story (see below), so Attention was not promoted either;
+   **retracted for the wrong reason first, right reason second.**
+
+**PROMOTED (2026-09-12, final): TCN, trained on the single-replicate-augmented
+310-sequence set, is the official Stage 2a model**, replacing the
+augmented plain LSTM. Decision, made after the corrected numbers above:
+TCN tied for best 33-chip AND best hold-out simultaneously in the
+architecture comparison (0.788/0.727) — the only candidate best-or-tied
+on both metrics — with no interpretability complication the way Attention
+has. Not LSTM+Attention (same hold-out, lower 33-chip in that comparison,
+plus the attention-weight caveat below). Not the ensemble (identical
+numbers to TCN alone, 3x inference cost, zero net gain). Not
+pre-augmentation plain LSTM (best 33-chip at 0.818, but worst hold-out at
+0.545 — a wide gap consistent with overfitting to the 33-chip set, not
+real generalization). **Honest note: the actually-promoted TCN artifact
+(trained standalone, its own dedicated run) scores 0.727/0.727, not the
+comparison script's in-sequence 0.788/0.727** — training TCN as the only
+model in a fresh process consumes the shared PyTorch RNG differently than
+training it third-in-sequence after LSTM and Attention within one script,
+even with the same seed and the same determinism fix. Both are
+individually bit-reproducible; "deterministic" means reproducible given
+the same RNG-consumption history, not identical across scripts with
+different call sequences. `pipeline_api.py`'s `load_lstm()` was made
+architecture-aware (`lstm_config.json`'s new `"architecture"` field) to
+support this promotion. *Source: `promote_tcn_official.py`,
+`tcn_official_metrics.txt`, `pipeline_api.py`.*
+
+- **Superseded (twice) — pre-augmentation plain LSTM: 0.818 / 33-chip,
+  0.545 / hold-out** (deterministic numbers; originally reported as 0.758
+  with no standalone hold-out figure). *Source: `lstm_metrics.txt`.*
+- **Superseded — single-replicate-augmented plain LSTM (briefly official):
+  0.576 / 33-chip, 0.545 / hold-out** (deterministic; originally
+  celebrated as 0.758/0.727, a thread-scheduling artifact — see above).
+  *Source: `lstm_augmented_metrics.txt`.*
+- **Root-cause diagnosis behind the augmentation attempt kept as
+  background, not retracted**: real `SINGLE_REPLICATE` chips scored only
+  56.25% in the 33-chip validation set (vs. 90–100% for
+  CONCORDANT/DIVERGENT chips) because synthetic training data always
+  averaged two replicates per sequence, producing lower point-noise than
+  any genuine single-replicate curve (`Var(mean of 2 iid) = Var/2`). That
+  diagnosis is still independently visible in the data; the fix built on
+  top of it (155 additional single-replicate synthetic sequences) simply
+  didn't measurably help once evaluated under real determinism.
+- **LSTM+Attention and TCN both reach 0.788 (33-chip)** on the
+  PRE-augmentation comparison (deterministic; originally reported as an
+  identical 87.9% for both — under determinism they no longer tie: LSTM
+  baseline=0.727, Attention=0.788, TCN=0.727). *Source:
+  `lstm_tcn_comparison.txt`.*
 - **A flattened-feature Random Forest baseline, properly tuned, scores
-  63.6%** (max_depth/n_estimators swept via internal split; an earlier
-  untuned version reported 51.5% and was caught understating the
-  baseline's real ceiling during independent review) — still clearly below
-  the official LSTM (75.8%) and LSTM+Attention/TCN (87.9%), confirming the
-  sequence architecture earns real value over a naive baseline, on a
-  fairer/harder-to-challenge comparison than the first version made.
-  *Source: `benchmark_comparison.txt`.*
+  63.6%** (sklearn, unaffected by the determinism bug — same number
+  before and after) — still clearly below every sequence model tested
+  (0.727–0.818 pre-augmentation, 0.727–0.788 on augmented data),
+  confirming the sequence architecture earns real value over a naive
+  baseline. *Source: `benchmark_comparison.txt`.*
 - **Attention weights do NOT clearly concentrate in the first 15s**
   (mean weight 0.299, seed 20260907; 0.307 average across 6 seeds —
   uniform baseline 0.333; peak weight occurs at t=38.1s, LATE in the
   window) — does **not** independently confirm the Week 1 "first 30
   seconds matter most" biomarker insight; if anything the model weights
-  the LATE part of the curve more. **Verified across 6 seeds** — the
-  below-uniform-early direction holds consistently every time, a
-  genuinely reproducible finding, but the finding itself is a null/
-  contrary result for the "attention rediscovers the early-window
-  insight" story, not a confirming one. *Source:
+  the LATE part of the curve more. This is the finding that already
+  caught the determinism bug (see above) and, separately, the reason
+  Attention wasn't promoted even though its accuracy briefly looked
+  competitive — the "independent rediscovery" narrative this finding
+  would need to support isn't there. **Verified across 6 seeds** under
+  the fixed, deterministic settings — the below-uniform-early direction
+  holds consistently every time. *Source:
   `attention_weight_analysis.txt`.*
-- **BUG FOUND AND FIXED (2026-09-12, re-review): the "verified robust
-  across 6 seeds" claim above was not actually reproducible before this
-  fix.** `torch.manual_seed()` alone does not make CPU LSTM training
-  bit-reproducible — PyTorch's default multi-threaded CPU execution has
-  non-deterministic floating-point reduction order, which compounds over
-  150 epochs into meaningfully different final weights. Rerunning the
-  exact same script/seeds in a fresh process produced DIFFERENT numbers
-  each time — one rerun had seed 5 cross the uniform baseline entirely
-  (0.385, flipping "CONSISTENT" to "INCONSISTENT direction"), directly
-  contradicting the already-pushed "VERIFIED ROBUST" claim. Root cause
-  confirmed and fixed by forcing `torch.set_num_threads(1)` +
-  `torch.use_deterministic_algorithms(True)`: two separate fresh runs
-  under that fix produced bit-identical results. The qualitative
-  conclusion survived (still consistently below-uniform-early across all
-  6 seeds) — the original finding was correct, but only by luck until
-  this fix; the numbers above (0.299/0.307) are the first properly
-  reproducible ones. *Source: `attention_weight_visualization.py`'s
-  module-level comment.*
-- **Learning-rate/dropout sweep confirms, doesn't improve on, Week 4's
-  existing defaults** (tied at 0.548 internal accuracy, not beaten).
-  Sequence window (45s/60pts) reconfirmed as the coverage-optimal choice —
-  a 60s window would drop/extrapolate at least one real replicate.
-  *Source: `hyperparameter_sweep.txt`.*
+- **Learning-rate/dropout sweep: previously "confirms, doesn't beat,
+  defaults" — now a real (if narrow) win.** Under determinism, `lr=0.001,
+  dropout=0.4` reaches 0.645 internal-tuning-split accuracy vs. the
+  existing default combo's 0.613 (previously both were reported tied at
+  0.548). Sequence window (45s/60pts) reconfirmed as the coverage-optimal
+  choice — a 60s window would drop/extrapolate at least one real
+  replicate. *Source: `hyperparameter_sweep.txt`.*
 
 ## Stage 2b — Concentration regressor
 

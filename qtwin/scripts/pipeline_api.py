@@ -33,6 +33,7 @@ from gatekeeper_model import LABELS, build_features, build_label, load_training_
 from holdout import load_holdout_chip_ids
 from model_trainer import SequenceLSTM, load_real_validation, load_synthetic, normalize
 from regression_model import pick_degree
+from sequence_architectures import TCN
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
@@ -98,9 +99,21 @@ def train_regression_models():
 
 
 def load_lstm():
+    """Loads whichever Stage 2a sequence model is currently promoted to
+    official (lstm_probe_stage.pt / lstm_config.json). Architecture-aware
+    since 2026-09-12's determinism-fix promotion (TCN) -- config["architecture"]
+    picks the model class; older configs with no "architecture" key default
+    to SequenceLSTM for backward compatibility with configs saved before
+    this field existed."""
     with open(MODEL_DIR / "lstm_config.json", encoding="utf-8") as f:
         config = json.load(f)
-    model = SequenceLSTM(hidden_size=config["hidden_size"])
+    architecture = config.get("architecture", "LSTM")
+    if architecture == "TCN":
+        model = TCN(channels=config["channels"], n_layers=config["n_layers"])
+    elif architecture == "LSTM":
+        model = SequenceLSTM(hidden_size=config["hidden_size"])
+    else:
+        raise ValueError(f"unknown architecture {architecture!r} in lstm_config.json")
     model.load_state_dict(torch.load(MODEL_DIR / "lstm_probe_stage.pt", map_location="cpu"))
     model.eval()
     return model, config

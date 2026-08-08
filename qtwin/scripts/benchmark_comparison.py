@@ -70,8 +70,13 @@ def main():
     # Official LSTM numbers (lstm_metrics.txt) and Week 4 comparison numbers
     # (lstm_tcn_comparison.txt), quoted directly rather than re-run here to
     # avoid re-training-noise -- see those files for the exact source runs.
-    official_lstm_acc = 0.758
-    attention_tcn_acc = 0.879
+    # UPDATED (2026-09-12) after fixing a CPU-thread non-determinism bug in
+    # every torch training script -- these numbers changed from the
+    # pre-fix values (0.758 / 0.879) once training became actually
+    # reproducible. Attention and TCN no longer tie (0.788 vs 0.727), so
+    # they're tracked separately instead of one combined constant.
+    official_lstm_acc = 0.818
+    attention_tcn_acc = 0.788  # best of LSTM+Attention (0.788) / TCN (0.727)
 
     with open(MODEL_DIR / "benchmark_comparison.txt", "w", encoding="utf-8") as f:
         f.write("Testing week Task 3 -- lightweight benchmarking\n")

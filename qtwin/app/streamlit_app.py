@@ -157,10 +157,17 @@ with tab2:
     st.text((models_dir / "regression_curve_shape_fix.txt").read_text(encoding="utf-8"))
 with tab3:
     st.info(
-        "The prediction shown above uses the single-replicate-augmented LSTM "
-        "(promoted after diagnosing why hold-out accuracy dropped) -- see "
-        "lstm_augmented_metrics.txt below for the current model's own numbers."
+        "The prediction shown above uses TCN (channels=8, n_layers=3), trained on the "
+        "single-replicate-augmented data -- promoted 2026-09-12 after a CPU-thread "
+        "non-determinism bug was found and fixed in every torch training script, which "
+        "overturned the two prior candidates (the augmented plain LSTM showed no real "
+        "hold-out gain once reproducible; the plain LSTM briefly looked like it beat "
+        "Attention/TCN, which also didn't hold up). See tcn_official_metrics.txt below "
+        "for the current model's own numbers, and lstm_augmented_metrics.txt / "
+        "lstm_metrics.txt for the superseded history."
     )
+    st.text((models_dir / "tcn_official_metrics.txt").read_text(encoding="utf-8"))
+    st.divider()
     st.text((models_dir / "lstm_augmented_metrics.txt").read_text(encoding="utf-8"))
     st.divider()
     st.text((models_dir / "lstm_metrics.txt").read_text(encoding="utf-8"))
