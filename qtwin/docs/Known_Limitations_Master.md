@@ -213,12 +213,17 @@ support this promotion. *Source: `promote_tcn_official.py`,
   the scope caveat. Target 3.77 µM (n=3, also very small). All three numbers
   are illustrative given the tiny n, not conclusive. *Source:
   `holdout_validation_results.txt`.*
-- **`holdout_validation_results.txt` re-run (2026-09-12) with the promoted
-  single-replicate-augmented LSTM** — its LSTM hold-out line now reads
-  0.727 (gap vs. 33-chip accuracy: +0.031), matching
-  `lstm_augmented_metrics.txt` exactly. Regression/gatekeeper numbers were
-  unaffected (deterministic re-run, only the LSTM predictions changed).
-  This closes the staleness gap flagged right after the LSTM promotion.
+- **`holdout_validation_results.txt` re-run (2026-09-12, twice) — first
+  with the (later-superseded) augmented LSTM, then again with the
+  officially-promoted TCN** — its LSTM hold-out line now reads 0.727
+  (gap vs. 33-chip accuracy: **0.000**, the only Stage 2a model tried
+  that holds exactly on genuinely blind data). Regression/gatekeeper
+  numbers were unaffected across both reruns (only the LSTM/TCN
+  predictions changed each time). A hardcoded 33-chip reference number in
+  `holdout_validation.py` itself (`known_33chip["lstm_acc"]`) had to be
+  updated by hand to the new model's number — the same category of "stale
+  reference constant" bug as `benchmark_comparison.py`'s, caught during
+  this promotion rather than left silently mismatched.
 
 ## Replicate divergence (cross-cutting)
 
