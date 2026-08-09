@@ -38,6 +38,30 @@ summarizes, it doesn't replace the originals as the source of truth.
   (0.727) and 33-chip (0.727) accuracy are unchanged with the corrected
   data. No promotion redo needed; the underlying data is simply more
   correct going forward. *Source: `build_real_sequences.py`.*
+- **TWO MORE BUGS FOUND AND FIXED (2026-09-12), both invisible to code
+  review, only caught by actually rerunning the script and reading its
+  output.** While re-verifying the fix above didn't change conclusions:
+  (1) `augmented_architecture_comparison.py` crashed with a `NameError`
+  mid-file-write — an earlier variable rename
+  (`official_lstm_33chip`/`official_lstm_holdout` →
+  `official_33chip`/`official_holdout`) missed one usage, silently
+  truncating `augmented_architecture_comparison.txt` to 14 lines cut off
+  mid-sentence instead of its full ~194. `py_compile` (run earlier this
+  session as a "sweep") does **not** catch this — it's a runtime error,
+  not a syntax error, a real gap in that verification worth stating
+  plainly rather than treating `py_compile`-clean as sufficient. (2) Once
+  fixed, the same file's "HONEST INTERPRETATION" section compared a raw
+  computed accuracy (`8/11 = 0.7272727...`) against a hardcoded, already-
+  rounded reference literal (`0.727`) with strict `>` — since the raw
+  float is technically larger than its own rounded display value, this
+  misreported a genuine **tie** as "LSTM+Attention beats TCN on BOTH
+  metrics (0.727/0.727 vs 0.727/0.727)", identical-looking numbers
+  claimed as a win. Fixed by rounding both sides to 3 decimals before
+  comparing. All underlying classification numbers were unchanged
+  throughout (0.788/0.545, 0.727/0.727, 0.788/0.727) — only the
+  crashed/miscompared summary text was wrong. TCN's own promoted numbers
+  (0.727/0.727) were never affected by either bug. *Source:
+  `augmented_architecture_comparison.py`.*
 
 ## Stage 0 — Gatekeeper
 
