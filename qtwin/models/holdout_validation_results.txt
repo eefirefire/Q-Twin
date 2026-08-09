@@ -55,7 +55,7 @@ Naive MAE (same model applied to ALL 11 hold-out chips regardless of true
 concentration, i.e. what happens if the scope caveat is ignored): 4.59 uM
 No directly comparable 33-chip number exists for this scoped model -- the old
 7.09 uM figure was the unscoped model's, not an apples-to-apples baseline.
-Target-stage hold-out MAE: 3.77 uM (n=3)  (33-chip validation MAE: 5.35 uM)
+Target-stage hold-out MAE: 3.50 uM (n=3)  (33-chip validation MAE: 5.35 uM)
 
 ------------------------------------------------------------
 Per-chip detail:
