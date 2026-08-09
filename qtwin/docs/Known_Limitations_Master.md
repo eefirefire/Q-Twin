@@ -20,6 +20,24 @@ summarizes, it doesn't replace the originals as the source of truth.
   actual pipeline was never affected (single git-tracked source), but the
   stale Drive copies still need manual removal (no delete/move tool
   available). *Source: `Task0_Data_Integrity_Confirmation.md`.*
+- **BUG FOUND AND FIXED (2026-09-12, full-codebase review): `real_probe_sequences.npz`
+  (feeds every Stage 2a real-chip/hold-out evaluation) had a baseline bug
+  for 2 chips.** `build_real_sequences.py` matched CHI baseline to probe
+  replicate BY REPLICATE NUMBER — for `15Mar_No.17` (1 CHI replicate, 2
+  probe replicates) and `21Mar_No.2` (2 CHI replicates, 3 probe
+  replicates), the un-matched probe replicate silently fell into the "no
+  CHI file at all" fallback even though CHI data exists for that chip.
+  Largest impact on `15Mar_No.17` (in the official hold-out set):
+  replicate 2's wrong baseline produced a near-zero delta_f (~0.1 Hz)
+  instead of the real ~-138 Hz signal replicate 1 independently showed,
+  roughly halving the stored sequence's magnitude. Fixed by replicating
+  `ingest_raw_curves.py`'s actual averaging logic (same pattern as the
+  `biological_plausibility_check.py` fix earlier this session). **Impact
+  on current results, checked directly rather than assumed: none** —
+  `15Mar_No.17`'s classification didn't flip, and both TCN's hold-out
+  (0.727) and 33-chip (0.727) accuracy are unchanged with the corrected
+  data. No promotion redo needed; the underlying data is simply more
+  correct going forward. *Source: `build_real_sequences.py`.*
 
 ## Stage 0 — Gatekeeper
 
