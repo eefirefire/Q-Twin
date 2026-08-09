@@ -2,20 +2,17 @@ Augmented architecture comparison: LSTM vs. LSTM+Attention vs. TCN,
 all trained on the single-replicate-augmented (310-sequence) training set
 ==============================================================================
 
-CORRECTION NOTE (2026-09-12, added without a full rerun -- the numbers
-below are unchanged and still correct): the "HONEST INTERPRETATION"
-section near the bottom of this file compares against "currently-
-promoted LSTM's 0.758" and says "LSTM+Attention beats the currently-
-promoted [model]." That was accurate when written, but TCN was
-subsequently promoted official instead (0.727/0.727, tied with
-LSTM+Attention on hold-out but ahead on 33-chip in this same comparison
--- see tcn_official_metrics.txt and Known_Limitations_Master.md for the
-full decision). The comparison DATA in this file (all classification
-reports, confusion matrices, per-architecture numbers) is untouched and
-still the source the promotion decision was based on -- only the
-now-outdated "what to do next" framing at the bottom is superseded. The
-underlying script (augmented_architecture_comparison.py) was updated to
-reference the correct official model for any future rerun.
+CORRECTION NOTE (2026-09-12, verification rerun): this file previously
+crashed mid-write (a NameError from an incomplete variable rename) and
+separately had a floating-point comparison bug -- a raw computed
+accuracy (8/11=0.727272...) compared with strict ">" against a hardcoded
+ROUNDED reference literal (0.727) misreported a genuine TIE as
+"LSTM+Attention beats TCN on BOTH metrics." Both bugs are fixed in
+augmented_architecture_comparison.py (round both sides before comparing)
+and this file is a clean, complete rerun. All classification
+reports/confusion matrices/per-architecture numbers below are unchanged
+from every prior (successful) run this session -- only the
+now-corrected "HONEST INTERPRETATION" framing at the bottom differs.
 
 Closes two previously-separate open items:
 1. lstm_tcn_comparison.py flagged LSTM+Attention/TCN as beating the plain
@@ -25,9 +22,9 @@ Closes two previously-separate open items:
    re-compared against the augmented LSTM baseline, or evaluated on the
    blind hold-out set AT ALL -- this is the first time either has been.
 
-Currently-promoted official model: single-replicate-augmented LSTM,
-33-chip accuracy = 0.758, hold-out accuracy = 0.727
-(lstm_augmented_metrics.txt) -- the baseline every architecture below is
+Officially-promoted model: TCN (promoted, standalone run),
+33-chip accuracy = 0.727, hold-out accuracy = 0.727
+(tcn_official_metrics.txt) -- the baseline every architecture below is
 compared against.
 
 Training set: 310 sequences (155 original two-replicate-averaged +
@@ -187,22 +184,19 @@ Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'D
  [1 1 1]]
 
 HONEST INTERPRETATION:
-Best hold-out accuracy: LSTM+Attention (0.727) vs. currently-promoted LSTM's 0.727.
-Best 33-chip accuracy: LSTM (baseline) (0.788) vs. currently-promoted LSTM's 0.758.
+Best hold-out accuracy in THIS comparison: LSTM+Attention (0.727) vs. the officially-promoted TCN (promoted, standalone run)'s 0.727.
+Best 33-chip accuracy in THIS comparison: LSTM (baseline) (0.788) vs. the officially-promoted TCN (promoted, standalone run)'s 0.727.
 
-NOTE on the 'LSTM (baseline)' row: this is NOT a different trained model
-from the officially-promoted one in lstm_augmented_metrics.txt -- same
-architecture, same training set, same tuning discipline, just a different
-RNG seed (this script reruns its own independent sweep so all three
-architectures are trained under identical conditions here, same practice
-as lstm_tcn_comparison.py). Its 33-chip number differing from the official
-0.758 (here: see summary above) is run-to-run noise at this dataset size,
-not a second, better LSTM to consider promoting.
+NOTE on the 'LSTM (baseline)' row: this is a fresh training run within this
+script's own three-way sweep (same architecture/training-set/tuning as any
+other plain-LSTM run, different RNG seed/consumption order), not a claim
+about the officially-promoted model, which is TCN, not LSTM -- see
+tcn_official_metrics.txt for that artifact's own dedicated numbers.
 
-PROMOTION CANDIDATE: LSTM+Attention beats the currently-promoted
-model on hold-out (0.727 vs 0.727) using the SAME augmented training data --
-the architecture change is additive on top of the augmentation fix, not a
-replacement for it. See the promotion note below for what was done.
+No architecture in this comparison clearly beats the officially-promoted
+TCN (promoted, standalone run) on both metrics simultaneously, given this hold-out
+set's small n=11 (each chip is ~9% of the reported accuracy) -- ties and
+single-metric edges are within this project's known run-to-run margin.
 
 n=11 hold-out and n=33 real validation are both small -- treat every
 number here as having real sampling noise, especially any single-chip

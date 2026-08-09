@@ -220,9 +220,9 @@ def main():
         f.write("2. Known_Limitations_Master.md flagged that neither architecture had been\n")
         f.write("   re-compared against the augmented LSTM baseline, or evaluated on the\n")
         f.write("   blind hold-out set AT ALL -- this is the first time either has been.\n\n")
-        f.write(f"Currently-promoted official model: single-replicate-augmented LSTM,\n")
-        f.write(f"33-chip accuracy = {official_lstm_33chip:.3f}, hold-out accuracy = {official_lstm_holdout:.3f}\n")
-        f.write("(lstm_augmented_metrics.txt) -- the baseline every architecture below is\n")
+        f.write(f"Officially-promoted model: {official_model_name},\n")
+        f.write(f"33-chip accuracy = {official_33chip:.3f}, hold-out accuracy = {official_holdout:.3f}\n")
+        f.write("(tcn_official_metrics.txt) -- the baseline every architecture below is\n")
         f.write("compared against.\n\n")
         f.write(f"Training set: {len(seqs)} sequences (155 original two-replicate-averaged +\n")
         f.write("155 single-replicate augmentation). Same internal 80/20 synthetic tuning-\n")
@@ -266,8 +266,16 @@ def main():
         f.write("about the officially-promoted model, which is TCN, not LSTM -- see\n")
         f.write("tcn_official_metrics.txt for that artifact's own dedicated numbers.\n\n")
 
-        if (best_holdout[1]["holdout_acc"] > official_holdout
-                and best_holdout[1]["real_acc"] > official_33chip):
+        # BUG FOUND AND FIXED (2026-09-12): comparing raw computed floats
+        # (e.g. 8/11 = 0.7272727...) against hardcoded, already-ROUNDED
+        # reference literals (0.727) meant a chip-for-chip TIE could read as
+        # "beats" purely from floating-point noise below display precision
+        # -- caught when this printed "LSTM+Attention beats TCN on BOTH
+        # metrics (0.727/0.727 vs 0.727/0.727)," identical-looking numbers
+        # claimed as a win. Round both sides to the same 3-decimal display
+        # precision before comparing so a genuine tie reads as a tie.
+        if (round(best_holdout[1]["holdout_acc"], 3) > round(official_holdout, 3)
+                and round(best_holdout[1]["real_acc"], 3) > round(official_33chip, 3)):
             f.write(f"POTENTIAL PROMOTION CANDIDATE: {best_holdout[0]} beats the officially-\n")
             f.write(f"promoted {official_model_name} on BOTH metrics "
                     f"({best_holdout[1]['real_acc']:.3f}/{best_holdout[1]['holdout_acc']:.3f} vs "

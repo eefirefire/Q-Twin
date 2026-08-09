@@ -15,6 +15,8 @@ hold-out accuracy (0.545, measured separately via holdout_validation.py)
 is the honest baseline the augmentation attempt was trying to beat --
 see Known_Limitations_Master.md's Stage 2a determinism section for the
 full account of why that attempt's original 72.7% claim didn't hold up.
+Re-verified 2026-09-12 (second rerun, during a build_real_sequences.py
+bug-fix check): identical numbers, confirming this file is stable.
 
 This model takes the full probe-stage curve shape (60-point resampled
 sequence, 0-45s window) rather than the single early_displacement_30s
