@@ -1,16 +1,23 @@
 Soft-vote ensemble: LSTM + LSTM+Attention + TCN (all augmented-trained)
 ==========================================================================
 
-Follow-up to augmented_architecture_comparison.txt, which found no single
-architecture beats the officially-promoted plain LSTM on the augmented
-310-sequence training set. Different architectures can still make
-DIFFERENT mistakes on different chips even when tied/losing individually --
-this tests whether averaging predicted probabilities across all three
-(soft-vote ensemble, mean softmax then argmax) recovers a net improvement
-from that error diversity, rather than assuming it would.
+CORRECTION NOTE (2026-09-12, added without a full rerun -- the numbers
+below are unchanged and still correct): this file originally described
+"the officially-promoted plain LSTM" (0.758/0.727) as the baseline to
+beat. TCN was subsequently promoted official instead (0.727/0.727) --
+see tcn_official_metrics.txt and Known_Limitations_Master.md. The
+ensemble's own numbers below (0.788/0.727, tying TCN and LSTM+Attention,
+not beating either) are untouched by this correction.
 
-Currently-promoted official model: single-replicate-augmented LSTM,
-33-chip accuracy = 0.758, hold-out accuracy = 0.727
+Follow-up to augmented_architecture_comparison.txt. Different
+architectures can still make DIFFERENT mistakes on different chips even
+when tied/losing individually -- this tests whether averaging predicted
+probabilities across all three (soft-vote ensemble, mean softmax then
+argmax) recovers a net improvement from that error diversity, rather
+than assuming it would.
+
+Officially-promoted model: TCN (promoted, standalone run),
+33-chip accuracy = 0.727, hold-out accuracy = 0.727
 
 Individual models in this ensemble (same run, same tuning, feeds the
 ensemble below):
@@ -55,8 +62,8 @@ Confusion matrix (rows=actual, cols=predicted), labels=['SUCCESS', 'FAILURE', 'D
  [1 1 1]]
 
 HONEST ASSESSMENT:
-The ensemble (0.727 hold-out) ties or marginally beats the
-officially-promoted LSTM (0.727), but does not clearly
+The ensemble (0.727 hold-out) ties the officially-promoted TCN (0.727)
+by coincidence of number, not identity of model -- and does not clearly
 beat the best individual model tested here (0.727) --
 not a strong enough case to justify tripling model complexity for
 production. Reported as a real but marginal result, not oversold.

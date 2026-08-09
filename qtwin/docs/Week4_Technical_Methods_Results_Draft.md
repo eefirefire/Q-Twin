@@ -16,6 +16,24 @@ if naively applied regardless of true concentration (n=11) — see
 `Known_Limitations_Master.md`'s Stage 2b section for the full, current
 numbers before using this section in the actual proposal merge.
 
+**UPDATE (2026-09-12, larger correction — read before using Section 2.2
+or the 2.4 summary table):** a CPU-thread non-determinism bug was found
+and fixed across every torch training script in this project.
+Section 2.2's numbers below (LSTM 75.8%, LSTM+Attention/TCN 87.9%, the
+"promote LSTM+Attention" recommendation) all predate that fix and are
+superseded — under proper determinism the pre-augmentation LSTM scores
+81.8%, and LSTM+Attention/TCN score 78.8%/72.7% respectively (no longer
+tied). **TCN (trained on a since-added single-replicate-augmented
+training set) was promoted to official Stage 2a model instead of
+LSTM+Attention** — see `Known_Limitations_Master.md`'s Stage 2a
+determinism-bug section for the full corrected numbers and the two
+conversation decisions this retracted before use. Separately, Section
+2.3's target-stage regressor (5.35 µM MAE, unscoped) has also since been
+scoped to 0.5–5 µM per Eva's Q3 Hook Effect finding — see
+`target_regressor_hook_effect_scope.txt`. Do not merge Sections 2.2/2.3
+into the actual proposal without pulling the current numbers from
+`Known_Limitations_Master.md` first.
+
 **[EVA: BIOMEDICAL BACKGROUND SECTION PLACEHOLDER]** — assay chemistry,
 PCA3/QCM biosensor mechanism, and clinical motivation belong here. Not
 drafted by Evin; left intentionally blank rather than guessed at.

@@ -138,6 +138,10 @@ with right:
              if result["delta_f_probe"] == result["delta_f_probe"] else "**delta_f_probe:** n/a")
     if result.get("target_predicted_uM") is not None:
         st.write(f"**Target-stage regressor:** {result['target_predicted_uM']:.1f} uM")
+    elif result.get("target_out_of_range"):
+        st.write(f"**Target-stage regressor:** outside validated range "
+                 f"(raw model output {result['target_raw_prediction_uM']:.1f} uM, "
+                 f"outside the 0.5-5 uM Hook Effect scope per Eva's Q3)")
 
 st.divider()
 st.subheader("Honest caveats (pulled from this week's own metrics files, not restated from memory)")
@@ -150,11 +154,16 @@ with tab2:
         "The probe-stage prediction shown above uses the Testing week Task 7 fix "
         "(Option A, trained/valid only for concentrations <10 uM) -- NOT the original "
         "unscoped model regression_metrics.txt below describes. See "
-        "regression_curve_shape_fix.txt for the current model's own numbers."
+        "regression_curve_shape_fix.txt for the current model's own numbers.\n\n"
+        "The target-stage prediction uses a 0.5-5 uM scope (2026-09-12) -- Hook "
+        "Effect / surface crowding onset per Eva's Q3, not accuracy optimization. "
+        "See target_regressor_hook_effect_scope.txt below."
     )
     st.text((models_dir / "regression_metrics.txt").read_text(encoding="utf-8"))
     st.divider()
     st.text((models_dir / "regression_curve_shape_fix.txt").read_text(encoding="utf-8"))
+    st.divider()
+    st.text((models_dir / "target_regressor_hook_effect_scope.txt").read_text(encoding="utf-8"))
 with tab3:
     st.info(
         "The prediction shown above uses TCN (channels=8, n_layers=3), trained on the "

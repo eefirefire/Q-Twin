@@ -102,26 +102,37 @@ caught:**
 
 **PROMOTED (2026-09-12, final): TCN, trained on the single-replicate-augmented
 310-sequence set, is the official Stage 2a model**, replacing the
-augmented plain LSTM. Decision, made after the corrected numbers above:
-TCN tied for best 33-chip AND best hold-out simultaneously in the
-architecture comparison (0.788/0.727) — the only candidate best-or-tied
-on both metrics — with no interpretability complication the way Attention
-has. Not LSTM+Attention (same hold-out, lower 33-chip in that comparison,
-plus the attention-weight caveat below). Not the ensemble (identical
-numbers to TCN alone, 3x inference cost, zero net gain). Not
-pre-augmentation plain LSTM (best 33-chip at 0.818, but worst hold-out at
-0.545 — a wide gap consistent with overfitting to the 33-chip set, not
-real generalization). **Honest note: the actually-promoted TCN artifact
-(trained standalone, its own dedicated run) scores 0.727/0.727, not the
-comparison script's in-sequence 0.788/0.727** — training TCN as the only
-model in a fresh process consumes the shared PyTorch RNG differently than
-training it third-in-sequence after LSTM and Attention within one script,
-even with the same seed and the same determinism fix. Both are
-individually bit-reproducible; "deterministic" means reproducible given
-the same RNG-consumption history, not identical across scripts with
-different call sequences. `pipeline_api.py`'s `load_lstm()` was made
-architecture-aware (`lstm_config.json`'s new `"architecture"` field) to
-support this promotion. *Source: `promote_tcn_official.py`,
+augmented plain LSTM. **CANONICAL NUMBER — the only one that should ever
+be quoted as "the official TCN result": 0.727 / 33-chip, 0.727 /
+hold-out.** This is the actual promoted, deployed artifact's own
+measured performance (`promote_tcn_official.py`, `tcn_official_metrics.txt`,
+verified bit-reproducible across two standalone runs), and it is the
+number written into `lstm_config.json`-loaded predictions, the Streamlit
+app, and `holdout_validation_results.txt`.
+
+A DIFFERENT number, 0.788 / 33-chip (hold-out still 0.727), appears in
+`augmented_architecture_comparison.txt` — that is NOT the promoted
+model's number and should never be quoted as "the" TCN result. It comes
+from training TCN third-in-sequence after LSTM and LSTM+Attention within
+one script, which consumes the shared PyTorch RNG differently than
+training TCN alone in a fresh process (`promote_tcn_official.py`), even
+with the same seed and the same determinism fix — "deterministic" means
+reproducible given the same RNG-consumption history, not identical
+across scripts with different call sequences. That comparison script's
+number is why TCN was *selected* (it was the reason TCN tied for
+best-or-tied-best on both metrics against Attention/plain-LSTM in that
+head-to-head); 0.727/0.727 is what got *shipped*. Decision, made after
+the corrected numbers above: TCN tied for best 33-chip AND best hold-out
+simultaneously in that architecture comparison — the only candidate
+best-or-tied on both metrics — with no interpretability complication the
+way Attention has. Not LSTM+Attention (same hold-out, lower 33-chip in
+that comparison, plus the attention-weight caveat below). Not the
+ensemble (identical numbers to TCN alone, 3x inference cost, zero net
+gain). Not pre-augmentation plain LSTM (best 33-chip at 0.818, but worst
+hold-out at 0.545 — a wide gap consistent with overfitting to the
+33-chip set, not real generalization). `pipeline_api.py`'s `load_lstm()`
+was made architecture-aware (`lstm_config.json`'s new `"architecture"`
+field) to support this promotion. *Source: `promote_tcn_official.py`,
 `tcn_official_metrics.txt`, `pipeline_api.py`.*
 
 - **Superseded (twice) — pre-augmentation plain LSTM: 0.818 / 33-chip,
@@ -206,6 +217,41 @@ support this promotion. *Source: `promote_tcn_official.py`,
   rather than a model flaw; flagged as a candidate for real lab validation
   in the funded phase. *Source:
   `Proposal_Notes_Target_Stage_Interpolation.md`.*
+- **SCOPED (2026-09-12): target-stage regressor restricted to 0.5–5 µM.**
+  **This is a Hook Effect / surface crowding onset decision per Eva's Q3,
+  NOT accuracy optimization** — the target-hybridization curve stays
+  clean and monotonic from 0.5–5 µM, then enters a gradual crowding onset
+  that fully inverts by 10 µM (`TARGET_ONSET_CONC_UM=5.0`,
+  `TARGET_INVERT_CONC_UM=10.0` in `constants.py`). Outside 0.5–5 µM the
+  delta_f-to-concentration mapping is not even a function — the same
+  structural problem Option A solved for the probe stage, at a
+  different, narrower boundary. In-scope MAE 2.63 µM (n=4 real chips)
+  vs. 5.35 µM unscoped (n=7, full range). Outside the scope,
+  `pipeline_api.py` now returns `"outside validated range"` instead of a
+  number, gated on the model's own predicted output (the true
+  concentration isn't known at prediction time, so an input-range gate
+  the way the probe stage tried isn't available the same way).
+  **HONEST FINDING: this output-range gate does NOT reliably work** —
+  tested directly against the only 3 real out-of-scope chips available
+  (all true 10 µM), it caught 0/3. Root cause: the scoped training
+  subset's own delta_f_target range is noisy enough (-349 to +75 Hz)
+  that a weak linear fit compresses even wildly out-of-range real
+  inputs back into the narrow [0.5, 5] µM trained output band —
+  `predict(-211.45 Hz)=2.00 µM`, `predict(85.33 Hz)=4.34 µM`,
+  `predict(42.86 Hz)=4.00 µM`, all inside scope. Same underlying failure
+  mode as the probe stage's abandoned input-range gate (per-chip noise
+  makes a scoped subset's range nearly as wide as the unrestricted one).
+  Kept anyway (still the logically correct check, fires when it can),
+  but reported plainly as a weak safeguard, not oversold as working —
+  the 0.5–5 µM training-data restriction itself is the real fix, the
+  gate is best-effort. **Named next step (post-approval, not started):**
+  a follow-up lab batch at 5.0, 7.5, and 10.0 µM specifically would nail
+  down exactly where the Hook Effect cutoff sits — the current boundary
+  is a generator-spec assumption
+  (`TARGET_INVERT_HZ_UNVERIFIED_AGAINST_LOCAL_DATA=True`), not
+  independently measured. *Source:
+  `target_regressor_hook_effect_scope.py`,
+  `target_regressor_hook_effect_scope.txt`, `pipeline_api.py`.*
 - **BLIND hold-out MAE (post-fix, Option A model)**: probe 1.62 µM
   evaluated honestly on the 4 hold-out chips truly <10 µM (n=4, very small),
   vs. 4.59 µM if the same model is naively applied to all 11 hold-out chips

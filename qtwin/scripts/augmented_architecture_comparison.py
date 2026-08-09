@@ -194,8 +194,20 @@ def main():
         print(f"{name:20s}  33chip={r['real_acc']:.3f}  holdout={r['holdout_acc']:.3f}  "
               f"DIVERGENT_precision={div_p:.3f}  DIVERGENT_recall={div_r:.3f}")
 
-    official_lstm_33chip = 0.758
-    official_lstm_holdout = 0.727
+    # UPDATED 2026-09-12: this used to hardcode the augmented plain LSTM's
+    # numbers (0.758/0.727) as "the currently-promoted model" -- stale ever
+    # since TCN was promoted official (0.727/0.727, see
+    # promote_tcn_official.py/tcn_official_metrics.txt -- the ACTUAL
+    # deployed TCN artifact's own dedicated-run number, not this script's
+    # in-sequence TCN row below, which differs due to RNG-consumption
+    # order; see Known_Limitations_Master.md's canonical-number note).
+    # Renamed from official_lstm_* since the official model is TCN now,
+    # not LSTM -- same category of stale-reference bug as
+    # benchmark_comparison.py's/holdout_validation.py's hardcoded
+    # constants, caught during a dedicated sweep for this exact pattern.
+    official_model_name = "TCN (promoted, standalone run)"
+    official_33chip = 0.727
+    official_holdout = 0.727
 
     with open(MODEL_DIR / "augmented_architecture_comparison.txt", "w", encoding="utf-8") as f:
         f.write("Augmented architecture comparison: LSTM vs. LSTM+Attention vs. TCN,\n")
@@ -242,30 +254,31 @@ def main():
         best_holdout = max(full_reports.items(), key=lambda kv: kv[1]["holdout_acc"])
         best_33chip = max(full_reports.items(), key=lambda kv: kv[1]["real_acc"])
         f.write("HONEST INTERPRETATION:\n")
-        f.write(f"Best hold-out accuracy: {best_holdout[0]} ({best_holdout[1]['holdout_acc']:.3f}) "
-                f"vs. currently-promoted LSTM's {official_lstm_holdout:.3f}.\n")
-        f.write(f"Best 33-chip accuracy: {best_33chip[0]} ({best_33chip[1]['real_acc']:.3f}) "
-                f"vs. currently-promoted LSTM's {official_lstm_33chip:.3f}.\n\n")
-        f.write("NOTE on the 'LSTM (baseline)' row: this is NOT a different trained model\n")
-        f.write("from the officially-promoted one in lstm_augmented_metrics.txt -- same\n")
-        f.write("architecture, same training set, same tuning discipline, just a different\n")
-        f.write("RNG seed (this script reruns its own independent sweep so all three\n")
-        f.write("architectures are trained under identical conditions here, same practice\n")
-        f.write("as lstm_tcn_comparison.py). Its 33-chip number differing from the official\n")
-        f.write("0.758 (here: see summary above) is run-to-run noise at this dataset size,\n")
-        f.write("not a second, better LSTM to consider promoting.\n\n")
+        f.write(f"Best hold-out accuracy in THIS comparison: {best_holdout[0]} "
+                f"({best_holdout[1]['holdout_acc']:.3f}) vs. the officially-promoted "
+                f"{official_model_name}'s {official_holdout:.3f}.\n")
+        f.write(f"Best 33-chip accuracy in THIS comparison: {best_33chip[0]} "
+                f"({best_33chip[1]['real_acc']:.3f}) vs. the officially-promoted "
+                f"{official_model_name}'s {official_33chip:.3f}.\n\n")
+        f.write("NOTE on the 'LSTM (baseline)' row: this is a fresh training run within this\n")
+        f.write("script's own three-way sweep (same architecture/training-set/tuning as any\n")
+        f.write("other plain-LSTM run, different RNG seed/consumption order), not a claim\n")
+        f.write("about the officially-promoted model, which is TCN, not LSTM -- see\n")
+        f.write("tcn_official_metrics.txt for that artifact's own dedicated numbers.\n\n")
 
-        if best_holdout[1]["holdout_acc"] > official_lstm_holdout and best_holdout[0] != "LSTM (baseline)":
-            f.write(f"PROMOTION CANDIDATE: {best_holdout[0]} beats the currently-promoted\n")
-            f.write(f"model on hold-out ({best_holdout[1]['holdout_acc']:.3f} vs "
-                    f"{official_lstm_holdout:.3f}) using the SAME augmented training data --\n")
-            f.write("the architecture change is additive on top of the augmentation fix, not a\n")
-            f.write("replacement for it. See the promotion note below for what was done.\n")
+        if (best_holdout[1]["holdout_acc"] > official_holdout
+                and best_holdout[1]["real_acc"] > official_33chip):
+            f.write(f"POTENTIAL PROMOTION CANDIDATE: {best_holdout[0]} beats the officially-\n")
+            f.write(f"promoted {official_model_name} on BOTH metrics "
+                    f"({best_holdout[1]['real_acc']:.3f}/{best_holdout[1]['holdout_acc']:.3f} vs "
+                    f"{official_33chip:.3f}/{official_holdout:.3f}) using the SAME augmented\n")
+            f.write("training data -- worth a deliberate re-promotion decision, not acted on\n")
+            f.write("automatically by rerunning this script.\n")
         else:
-            f.write("No architecture beats the currently-promoted augmented LSTM on hold-out\n")
-            f.write("by a margin large enough to justify a promotion, given this hold-out set's\n")
-            f.write("small n=11 (each chip is ~9% of the reported accuracy) -- a real, honest\n")
-            f.write("null result, not forced into a positive finding.\n")
+            f.write(f"No architecture in this comparison clearly beats the officially-promoted\n")
+            f.write(f"{official_model_name} on both metrics simultaneously, given this hold-out\n")
+            f.write("set's small n=11 (each chip is ~9% of the reported accuracy) -- ties and\n")
+            f.write("single-metric edges are within this project's known run-to-run margin.\n")
         f.write("\nn=11 hold-out and n=33 real validation are both small -- treat every\n")
         f.write("number here as having real sampling noise, especially any single-chip\n")
         f.write("swing on the hold-out set. HONEST METHODOLOGY NOTE (same as\n")

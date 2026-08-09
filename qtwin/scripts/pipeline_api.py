@@ -38,6 +38,12 @@ from sequence_architectures import TCN
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
 
+# Target-stage regressor scope (2026-09-12) -- Hook Effect / surface
+# crowding onset per Eva's Q3, NOT accuracy optimization. See
+# train_regression_models()'s docstring for the full justification.
+TARGET_SCOPE_LOW_UM = 0.5
+TARGET_SCOPE_HIGH_UM = 5.0
+
 
 def train_gatekeeper() -> RandomForestClassifier:
     X_train, y_train, _ = load_gatekeeper_training()
@@ -86,9 +92,25 @@ def train_regression_models():
 
     target = pd.read_csv(DATA_DIR / "target_synthetic_batch.csv")
     target_clean = target[target["class"] == "CLEAN_PCA3_TARGET_HYB"].dropna(subset=["true_endpoint_delta_f"])
-    X_target = target_clean[["true_endpoint_delta_f"]].values
-    y_target = target_clean["concentration_uM"].values
-    target_degree = pick_degree(X_target, y_target)
+
+    # Target stage: scoped to 0.5-5 uM (2026-09-12), per Eva's Q3 finding --
+    # the target-hybridization curve stays clean and monotonic from 0.5-5 uM,
+    # then enters a gradual surface-crowding onset that fully inverts by
+    # 10 uM (the Hook Effect; TARGET_ONSET_CONC_UM=5.0,
+    # TARGET_INVERT_CONC_UM=10.0 in constants.py already encode this in the
+    # generator). This scoping is a Hook Effect / surface crowding onset
+    # decision per Eva's Q3, NOT an accuracy-optimization choice -- it
+    # exists because outside 0.5-5 uM the delta_f-to-concentration mapping
+    # is not even a function (multiple concentrations map to the same
+    # reading), the same structural problem Option A solved for the probe
+    # stage, at a different, narrower boundary here.
+    target_scoped = target_clean[
+        (target_clean["concentration_uM"] >= TARGET_SCOPE_LOW_UM)
+        & (target_clean["concentration_uM"] <= TARGET_SCOPE_HIGH_UM)
+    ]
+    X_target = target_scoped[["true_endpoint_delta_f"]].values
+    y_target = target_scoped["concentration_uM"].values
+    target_degree = pick_degree(X_target, y_target, max_degree=min(5, len(X_target) - 1))
     target_model = make_pipeline(PolynomialFeatures(target_degree), LinearRegression())
     target_model.fit(X_target, y_target)
 
@@ -160,6 +182,15 @@ PROBE_SCOPE_CAVEAT = (
     "measurement that shows this)."
 )
 
+TARGET_SCOPE_CAVEAT = (
+    f"Valid only for {TARGET_SCOPE_LOW_UM}-{TARGET_SCOPE_HIGH_UM} uM (Hook Effect / "
+    "surface crowding onset per Eva's Q3, not accuracy optimization -- the "
+    "target-hybridization curve stays clean and monotonic in this range, then "
+    "enters a gradual crowding onset that fully inverts by 10 uM)."
+)
+
+TARGET_OUT_OF_RANGE_MESSAGE = "outside validated range"
+
 
 def _regression_predict(models, chip_row: pd.Series):
     out = {}
@@ -167,7 +198,29 @@ def _regression_predict(models, chip_row: pd.Series):
         out["probe_predicted_uM"] = float(models["probe_model"].predict([[chip_row["delta_f_probe"]]])[0])
         out["probe_scope_caveat"] = PROBE_SCOPE_CAVEAT
     if pd.notna(chip_row.get("delta_f_target")):
-        out["target_predicted_uM"] = float(models["target_model"].predict([[chip_row["delta_f_target"]]])[0])
+        # Gated on the model's own OUTPUT prediction (the true concentration
+        # isn't known at prediction time, so an input-range gate isn't
+        # possible the way it might seem). HONEST CAVEAT, checked directly
+        # rather than assumed (see target_regressor_hook_effect_scope.txt):
+        # on the only real out-of-scope test available (3 real 10 uM chips),
+        # this gate caught 0/3 -- the scoped training subset's own
+        # delta_f_target range is noisy enough (-349 to +75 Hz) that a weak
+        # linear fit compresses even wildly out-of-range inputs back into
+        # the narrow [0.5, 5] uM trained output band. Same underlying
+        # failure mode as the probe stage's abandoned input-range gate
+        # (per-chip noise makes the scoped subset's range nearly as wide as
+        # the unrestricted one). Kept anyway -- it is still the logically
+        # correct check and does fire when it can -- but it is not a
+        # reliable safeguard at this dataset's noise level; the 0.5-5 uM
+        # SCOPE ITSELF (training data restriction) is the real fix.
+        raw_pred = float(models["target_model"].predict([[chip_row["delta_f_target"]]])[0])
+        if TARGET_SCOPE_LOW_UM <= raw_pred <= TARGET_SCOPE_HIGH_UM:
+            out["target_predicted_uM"] = raw_pred
+        else:
+            out["target_predicted_uM"] = None
+            out["target_out_of_range"] = True
+            out["target_raw_prediction_uM"] = raw_pred
+        out["target_scope_caveat"] = TARGET_SCOPE_CAVEAT
     return out
 
 

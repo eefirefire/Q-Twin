@@ -112,20 +112,24 @@ def main():
     print(real_report_text)
     print(holdout_report_text)
 
-    official_lstm_33chip, official_lstm_holdout = 0.758, 0.727
+    # UPDATED 2026-09-12: was hardcoded to the augmented plain LSTM's numbers
+    # (0.758/0.727) as "the currently-promoted model" -- stale ever since TCN
+    # was promoted official instead. Same category of stale-reference-
+    # constant bug as benchmark_comparison.py's / holdout_validation.py's /
+    # augmented_architecture_comparison.py's, caught during a dedicated sweep.
+    official_model_name = "TCN (promoted, standalone run)"
+    official_33chip, official_holdout = 0.727, 0.727
 
     with open(MODEL_DIR / "augmented_ensemble_results.txt", "w", encoding="utf-8") as f:
         f.write("Soft-vote ensemble: LSTM + LSTM+Attention + TCN (all augmented-trained)\n")
         f.write("=" * 74 + "\n\n")
-        f.write("Follow-up to augmented_architecture_comparison.txt, which found no single\n")
-        f.write("architecture beats the officially-promoted plain LSTM on the augmented\n")
-        f.write("310-sequence training set. Different architectures can still make\n")
-        f.write("DIFFERENT mistakes on different chips even when tied/losing individually --\n")
-        f.write("this tests whether averaging predicted probabilities across all three\n")
-        f.write("(soft-vote ensemble, mean softmax then argmax) recovers a net improvement\n")
-        f.write("from that error diversity, rather than assuming it would.\n\n")
-        f.write(f"Currently-promoted official model: single-replicate-augmented LSTM,\n")
-        f.write(f"33-chip accuracy = {official_lstm_33chip:.3f}, hold-out accuracy = {official_lstm_holdout:.3f}\n\n")
+        f.write("Follow-up to augmented_architecture_comparison.txt. Different architectures\n")
+        f.write("can still make DIFFERENT mistakes on different chips even when tied/losing\n")
+        f.write("individually -- this tests whether averaging predicted probabilities across\n")
+        f.write("all three (soft-vote ensemble, mean softmax then argmax) recovers a net\n")
+        f.write("improvement from that error diversity, rather than assuming it would.\n\n")
+        f.write(f"Officially-promoted model: {official_model_name},\n")
+        f.write(f"33-chip accuracy = {official_33chip:.3f}, hold-out accuracy = {official_holdout:.3f}\n\n")
         f.write("Individual models in this ensemble (same run, same tuning, feeds the\n")
         f.write("ensemble below):\n")
         for name, (racc, hacc) in individual_results.items():
@@ -142,27 +146,26 @@ def main():
 
         f.write("HONEST ASSESSMENT:\n")
         best_individual_holdout = max(individual_results.values(), key=lambda r: r[1])[1]
-        if holdout_acc > max(official_lstm_holdout, best_individual_holdout):
+        if holdout_acc > max(official_holdout, best_individual_holdout):
             f.write(f"The ensemble ({holdout_acc:.3f} hold-out) beats BOTH the officially-promoted\n")
-            f.write(f"LSTM ({official_lstm_holdout:.3f}) and every individual member tested here\n")
-            f.write(f"(best individual: {best_individual_holdout:.3f}) -- genuine evidence the\n")
-            f.write("architectures' errors are diverse enough for averaging to help. Real\n")
-            f.write("promotion candidate, though ensembling triples inference cost/complexity\n")
-            f.write("for a small hold-out-set gain (n=11) -- worth weighing against the\n")
-            f.write("single-model simplicity the current official model has.\n")
-        elif holdout_acc >= official_lstm_holdout:
+            f.write(f"{official_model_name} ({official_holdout:.3f}) and every individual member\n")
+            f.write(f"tested here (best individual: {best_individual_holdout:.3f}) -- genuine\n")
+            f.write("evidence the architectures' errors are diverse enough for averaging to\n")
+            f.write("help. Real promotion candidate, though ensembling triples inference\n")
+            f.write("cost/complexity for a small hold-out-set gain (n=11) -- worth weighing\n")
+            f.write("against the single-model simplicity the current official model has.\n")
+        elif holdout_acc >= official_holdout:
             f.write(f"The ensemble ({holdout_acc:.3f} hold-out) ties or marginally beats the\n")
-            f.write(f"officially-promoted LSTM ({official_lstm_holdout:.3f}), but does not clearly\n")
-            f.write(f"beat the best individual model tested here ({best_individual_holdout:.3f}) --\n")
+            f.write(f"officially-promoted {official_model_name} ({official_holdout:.3f}), but does\n")
+            f.write(f"not clearly beat the best individual model tested here "
+                    f"({best_individual_holdout:.3f}) --\n")
             f.write("not a strong enough case to justify tripling model complexity for\n")
             f.write("production. Reported as a real but marginal result, not oversold.\n")
         else:
             f.write(f"The ensemble ({holdout_acc:.3f} hold-out) does NOT beat the officially-\n")
-            f.write(f"promoted LSTM ({official_lstm_holdout:.3f}) -- another honest null result.\n")
-            f.write("Combined with augmented_architecture_comparison.txt's finding, the\n")
-            f.write("simplest model (plain LSTM, single-replicate augmentation, no ensemble)\n")
-            f.write("remains the best-supported choice found across this project's full\n")
-            f.write("history of attempts. Reported as-is rather than forced into a positive\n")
+            f.write(f"promoted {official_model_name} ({official_holdout:.3f}) -- another honest\n")
+            f.write("null result. The simplest single model (TCN, no ensemble) remains the\n")
+            f.write("best-supported choice. Reported as-is rather than forced into a positive\n")
             f.write("finding.\n")
         f.write("\nn=11 hold-out, n=33 real validation -- both small, treat any single-chip\n")
         f.write("swing as real sampling noise, not a decisive result on its own.\n")

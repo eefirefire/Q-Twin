@@ -188,8 +188,15 @@ def main():
         f.write(f"Selected hidden_size={best_hidden}, epochs={best_epochs}.\n\n")
 
         f.write("-" * 60 + "\n")
-        f.write("BEFORE (official LSTM, lstm_metrics.txt): 33-chip accuracy = 0.758, ")
-        f.write("hold-out accuracy = 0.455\n\n")
+        # UPDATED 2026-09-12: was hardcoded to 0.758/0.455 -- stale since
+        # fixing the CPU-thread determinism bug (see model_trainer.py's
+        # matching comment). Pre-augmentation LSTM's current, deterministic
+        # numbers are 0.818 (33-chip, lstm_metrics.txt) and 0.545 (hold-out,
+        # measured separately via holdout_validation.py -- this script does
+        # not compute hold-out for the pre-augmentation model itself). Same
+        # category of stale-reference bug caught during a dedicated sweep.
+        f.write("BEFORE (pre-augmentation LSTM, lstm_metrics.txt): 33-chip accuracy = 0.818, ")
+        f.write("hold-out accuracy = 0.545\n\n")
         f.write("AFTER (this augmented model):\n")
         f.write(f"33-chip validation accuracy: {real_acc:.3f}\n")
         f.write(real_report)

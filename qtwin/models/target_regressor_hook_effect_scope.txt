@@ -1,0 +1,66 @@
+Stage 2b TARGET-stage regressor: scoped to 0.5-5 uM
+============================================================
+
+JUSTIFICATION: this is a HOOK EFFECT / SURFACE CROWDING ONSET decision
+per Eva's Q3, NOT an accuracy-optimization choice. The target-
+hybridization curve stays clean and monotonic from 0.5-5 uM, then
+enters a gradual crowding onset that fully inverts by 10 uM
+(TARGET_ONSET_CONC_UM=5.0, TARGET_INVERT_CONC_UM=10.0 in
+constants.py). Outside 0.5-5 uM the delta_f-to-concentration mapping
+is not even a function -- multiple concentrations can produce the
+same reading -- so a model spanning that boundary is not "less
+accurate," it is answering a question that does not have a single
+answer. Mirrors the probe-stage Option A fix
+(regression_curve_shape_fix.py) at a different, narrower boundary.
+
+Unscoped baseline (all concentrations, degree=3):
+  MAE = 5.35 uM (n=7 real non-hold-out chips, full range)
+
+Scoped model (0.5-5.0 uM only, degree=1):
+  MAE = 2.63 uM (n=4, real chips truly in 0.5-5.0 uM)
+
+Real chips OUTSIDE the 0.5-5.0 uM scope (n=3):
+  21Mar_No.10     true_conc=10.0 uM  delta_f_target=-211.45 Hz
+  21Mar_No.5      true_conc=10.0 uM  delta_f_target=85.33 Hz
+  21Mar_No.6      true_conc=10.0 uM  delta_f_target=42.86 Hz
+
+Of those, the output-range gate in pipeline_api.py (predicted value
+falling outside 0.5-5.0 uM) would catch and report
+"outside validated range" instead of a number for: 0/3
+
+HONEST FINDING, NOT HIDDEN: the gate did not work on this (very small,
+n=3) real test -- checked directly rather than assumed working. Root
+cause diagnosed: the SCOPED training subset's own delta_f_target range
+is -349 to +75 Hz (synthetic chip-to-chip noise is large even restricted
+to 0.5-5 uM), nearly as wide as the real 10 uM chips' actual readings
+(-211, +85, +43 Hz). A weak degree-1 fit on that noisy, wide-input/
+narrow-output (0.5-5 uM) training data compresses even far-out-of-range
+inputs back toward its narrow trained output band by construction --
+predict(-211.45)=2.00, predict(85.33)=4.34, predict(42.86)=4.00, all
+inside [0.5, 5]. This is the SAME underlying failure mode that killed
+the probe-stage's input-range gate (regression_curve_shape_fix.py /
+pipeline_api.py docstring): per-chip/synthetic noise makes the scoped
+subset's own range nearly as wide as the unrestricted one, so no simple
+range check -- input or output -- reliably discriminates in-scope from
+out-of-scope readings at this dataset's noise level. The gate mechanism
+is kept (it is still the logically correct idea, and DOES fire whenever
+a raw prediction happens to fall outside 0.5-5 uM), but its real,
+measured catch rate on the only real out-of-scope test available is 0/3
+-- reported plainly, not oversold as a working safeguard. The 0.5-5 uM
+SCOPE ITSELF (training only on that subset, per the Hook Effect
+justification) is the real fix; the gate is a best-effort secondary
+check that this small test shows is weaker than hoped.
+
+HONEST CAVEAT: only n=10 real target-stage chips exist at all, split
+across just 4 concentrations (0.5, 1, 5, 10 uM) -- no real data exists
+between 5 and 10 uM at all, so the exact onset/inversion boundary is
+modeled from the (UNVERIFIED_AGAINST_LOCAL_DATA) generator spec, not
+independently confirmed against real intermediate points. The in-scope
+MAE above (n=6) is illustrative given the tiny n, not conclusive.
+
+NAMED NEXT STEP (post-approval, not started): a follow-up lab batch at
+5.0, 7.5, and 10.0 uM target concentration specifically would nail down
+exactly where the Hook Effect cutoff sits -- the current 5 uM onset /
+10 uM full-inversion boundary is a generator-spec assumption
+(TARGET_INVERT_HZ_UNVERIFIED_AGAINST_LOCAL_DATA=True in constants.py),
+not independently measured. Flagged on record, not scheduled.

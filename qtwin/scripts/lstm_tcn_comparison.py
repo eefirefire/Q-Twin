@@ -207,10 +207,17 @@ def main():
             f.write("a genuine result, verified rather than assumed, given how suspicious an exact\n")
             f.write("match initially looked.\n\n")
 
-        baseline_official_acc = 0.758
+        # UPDATED 2026-09-12: was hardcoded to 0.758/hidden_size=16,epochs=220 --
+        # stale since fixing the CPU-thread determinism bug (see model_trainer.py's
+        # matching comment). lstm_metrics.txt's own current, deterministic number
+        # is 0.818 at hidden_size=16, epochs=80. Same category of stale-reference
+        # bug as benchmark_comparison.py's / holdout_validation.py's / the
+        # augmented_* scripts', caught during a dedicated sweep for this pattern.
+        baseline_official_acc = 0.818
+        baseline_official_params = "hidden_size=16, epochs=80"
         f.write(f"RE: the 'LSTM (baseline)' row above scoring notably worse ({full_reports['LSTM (baseline)'][0]:.3f})\n")
         f.write(f"than the officially-saved Week 3/4 baseline in lstm_metrics.txt ({baseline_official_acc:.3f},\n")
-        f.write("hidden_size=16, epochs=220): this is NOT the same trained model. This script\n")
+        f.write(f"{baseline_official_params}): this is NOT the same trained model. This script\n")
         f.write("reruns its own independent internal-tuning-split sweep (different RNG seed than\n")
         f.write("model_trainer.py) purely so all three architectures in this comparison are\n")
         f.write("tuned/trained under identical conditions for a fair three-way comparison -- it\n")

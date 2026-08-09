@@ -2,6 +2,21 @@ Augmented architecture comparison: LSTM vs. LSTM+Attention vs. TCN,
 all trained on the single-replicate-augmented (310-sequence) training set
 ==============================================================================
 
+CORRECTION NOTE (2026-09-12, added without a full rerun -- the numbers
+below are unchanged and still correct): the "HONEST INTERPRETATION"
+section near the bottom of this file compares against "currently-
+promoted LSTM's 0.758" and says "LSTM+Attention beats the currently-
+promoted [model]." That was accurate when written, but TCN was
+subsequently promoted official instead (0.727/0.727, tied with
+LSTM+Attention on hold-out but ahead on 33-chip in this same comparison
+-- see tcn_official_metrics.txt and Known_Limitations_Master.md for the
+full decision). The comparison DATA in this file (all classification
+reports, confusion matrices, per-architecture numbers) is untouched and
+still the source the promotion decision was based on -- only the
+now-outdated "what to do next" framing at the bottom is superseded. The
+underlying script (augmented_architecture_comparison.py) was updated to
+reference the correct official model for any future rerun.
+
 Closes two previously-separate open items:
 1. lstm_tcn_comparison.py flagged LSTM+Attention/TCN as beating the plain
    LSTM (87.9% vs 75.8%) but never promoted them, and never trained them on

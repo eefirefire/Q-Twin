@@ -23,8 +23,8 @@ Summary (all metrics on the real 33-chip validation set):
   TCN                   overall_acc=0.727  DIVERGENT_precision=0.417  DIVERGENT_recall=0.714  SUCCESS_recall=0.778  FAILURE_recall=0.625  (params={'channels': 8, 'n_layers': 2}, epochs=150)
 
 RE: the 'LSTM (baseline)' row above scoring notably worse (0.727)
-than the officially-saved Week 3/4 baseline in lstm_metrics.txt (0.758,
-hidden_size=16, epochs=220): this is NOT the same trained model. This script
+than the officially-saved Week 3/4 baseline in lstm_metrics.txt (0.818,
+hidden_size=16, epochs=80): this is NOT the same trained model. This script
 reruns its own independent internal-tuning-split sweep (different RNG seed than
 model_trainer.py) purely so all three architectures in this comparison are
 tuned/trained under identical conditions for a fair three-way comparison -- it
