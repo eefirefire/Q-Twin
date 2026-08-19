@@ -29,7 +29,10 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
 import curve_generator as cg
-from gatekeeper_model import LABELS, build_features, build_label, load_training_data as load_gatekeeper_training
+from gatekeeper_model import (
+    LABELS, build_features, build_label, EXTRA_WINDOW_COLS,
+    real_multiwindow_displacement, load_training_data as load_gatekeeper_training,
+)
 from holdout import load_holdout_chip_ids
 from model_trainer import SequenceLSTM, load_real_validation, load_synthetic, normalize
 from regression_model import pick_degree
@@ -156,8 +159,12 @@ def load_chip_table() -> pd.DataFrame:
 
 
 def _gatekeeper_predict(clf, chip_row: pd.Series) -> str:
+    row_df = pd.DataFrame([chip_row])
+    extra = real_multiwindow_displacement([chip_row["chip_id"]])
+    row_df = row_df.join(extra, on="chip_id")
     X = build_features(
-        pd.DataFrame([chip_row]), "early_displacement_30s", "displacement_replicate_status"
+        row_df, "early_displacement_30s", "displacement_replicate_status",
+        extra_window_cols=EXTRA_WINDOW_COLS,
     )
     return clf.predict(X)[0]
 

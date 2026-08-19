@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import constants as C
 import curve_generator as cg
 import pipeline_api as api
-from gatekeeper_model import LABELS, build_features
+from gatekeeper_model import LABELS, build_features, EXTRA_WINDOWS, EXTRA_WINDOW_COLS
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
 
@@ -68,7 +68,7 @@ def build_boundary_batch(rng: np.random.Generator) -> pd.DataFrame:
         actual_label = "DIVERGENT_REPLICATES" if status == "DIVERGENT_REPLICATES" else (
             "SUCCESS" if true_endpoint <= C.FAILURE_THRESHOLD_HZ else "FAILURE"
         )
-        rows.append({
+        row = {
             "boundary_id": f"BOUNDARY_{i:03d}",
             "true_final_value_target": final_value,
             "true_endpoint_delta_f": true_endpoint,
@@ -76,7 +76,18 @@ def build_boundary_batch(rng: np.random.Generator) -> pd.DataFrame:
             "early_displacement_30s": final_disp,
             "biomarker_replicate_status": status,
             "actual_label": actual_label,
-        })
+        }
+        # Same extra-window curve-shape features the retrained gatekeeper
+        # now uses (see gatekeeper_model.EXTRA_WINDOWS) -- averaged across
+        # both replicates the same way the 30s value is, via
+        # check_replicate_concordance's own averaging logic reapplied here
+        # per window so a divergent-at-one-window chip isn't silently
+        # smoothed over.
+        for window in EXTRA_WINDOWS:
+            w_disp_vals = [cg.compute_early_displacement(t, y, window_s=window) for t, y in reps]
+            w_final_disp, _ = cg.check_replicate_concordance(w_disp_vals[0], w_disp_vals[1])
+            row[f"early_displacement_{int(window)}s"] = w_final_disp
+        rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -85,7 +96,8 @@ def main():
     df = build_boundary_batch(rng)
 
     clf = api.train_gatekeeper()
-    X = build_features(df, "early_displacement_30s", "biomarker_replicate_status")
+    X = build_features(df, "early_displacement_30s", "biomarker_replicate_status",
+                        extra_window_cols=EXTRA_WINDOW_COLS)
     df["predicted_label"] = clf.predict(X)
 
     acc = accuracy_score(df["actual_label"], df["predicted_label"])

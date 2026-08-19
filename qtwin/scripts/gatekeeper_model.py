@@ -42,12 +42,25 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from holdout import load_holdout_chip_ids
+from biomarker_window_reconciliation import compute_chi_baseline, value_at
+import curve_generator as cg
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 MODEL_DIR = Path(__file__).resolve().parents[1] / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
 LABELS = ["SUCCESS", "FAILURE", "DIVERGENT_REPLICATES"]
+
+# Alternative to Gemini's Dissipation Factor suggestion for the boundary
+# stress test weakness (44% SUCCESS recall near threshold): give the
+# gatekeeper the early CURVE SHAPE (displacement at multiple windows)
+# instead of a single 30s point, on the theory that a chip whose reading
+# is consistently trending one way across 15/30/45s is more likely a real
+# near-boundary signal than one where 30s alone happens to land close to
+# -0.5 Hz by noise. Reuses biomarker_window_reconciliation.py's exact
+# baseline logic for real chips (not a second independent baseline calc).
+EXTRA_WINDOWS = [15.0, 45.0]
+EXTRA_WINDOW_COLS = [f"early_displacement_{int(w)}s" for w in EXTRA_WINDOWS]
 
 
 def build_label(success_or_fail: str, concordance_status: str) -> str:
@@ -56,7 +69,8 @@ def build_label(success_or_fail: str, concordance_status: str) -> str:
     return success_or_fail
 
 
-def build_features(df: pd.DataFrame, displacement_col: str, status_col: str) -> pd.DataFrame:
+def build_features(df: pd.DataFrame, displacement_col: str, status_col: str,
+                    extra_window_cols: list = None) -> pd.DataFrame:
     feat = pd.DataFrame(index=df.index)
     # Primary feature: early_displacement_30s (see the module docstring's
     # UPDATED note -- no longer NaN on divergence for either real or
@@ -64,7 +78,54 @@ def build_features(df: pd.DataFrame, displacement_col: str, status_col: str) -> 
     # load-bearing imputation).
     feat["early_displacement_30s"] = df[displacement_col].fillna(0.0)
     feat["is_divergent"] = (df[status_col] == "DIVERGENT_REPLICATES").astype(int)
+    for col in (extra_window_cols or []):
+        feat[col] = df[col].fillna(0.0) if col in df.columns else 0.0
     return feat
+
+
+def real_multiwindow_displacement(chip_ids) -> pd.DataFrame:
+    """Displacement at EXTRA_WINDOWS for real chips, computed the same way
+    early_displacement_30s itself is defined (CHI endpoint averaged per
+    chip, subtracted from the probe curve's value at that window) --
+    reuses biomarker_window_reconciliation.py's own functions rather than
+    re-deriving the baseline logic a third time."""
+    master = pd.read_csv(DATA_DIR / "raw_timeseries_master.csv")
+    clean = master[~master["is_error_file"]].copy()
+    probe_rows = clean[clean["stage"] == "probe"]
+    baseline = compute_chi_baseline(clean)
+
+    out = pd.DataFrame(index=pd.Index(chip_ids, name="chip_id"))
+    for window in EXTRA_WINDOWS:
+        val_per_rep = (
+            probe_rows.groupby(["chip_id", "replicate"])
+            .apply(lambda g: value_at(g, window), include_groups=False)
+            .reset_index(name="val")
+        )
+        val_per_chip = val_per_rep.groupby("chip_id")["val"].mean()
+        disp = (val_per_chip - baseline).reindex(out.index)
+        out[f"early_displacement_{int(window)}s"] = disp.values
+    return out
+
+
+def synthetic_multiwindow_displacement(synthetic_ids) -> pd.DataFrame:
+    """Same idea for synthetic training chips, but reads straight from the
+    already-generated, already-baseline-relative resampled curve sequences
+    saved by generate_probe_batch.py (probe_synthetic_sequences.npz) --
+    no new RNG draw, so this can't diverge from the CSV's own 30s value."""
+    npz = np.load(DATA_DIR / "probe_synthetic_sequences.npz", allow_pickle=True)
+    seq_ids = list(npz["synthetic_id"])
+    sequences = npz["sequences"]
+    grid = np.linspace(0.0, cg.SEQUENCE_WINDOW_S, sequences.shape[1])
+    id_to_idx = {sid: i for i, sid in enumerate(seq_ids)}
+
+    out = pd.DataFrame(index=pd.Index(list(synthetic_ids), name="synthetic_id"))
+    for window in EXTRA_WINDOWS:
+        vals = []
+        for sid in out.index:
+            idx = id_to_idx[sid]
+            vals.append(float(np.interp(window, grid, sequences[idx])))
+        out[f"early_displacement_{int(window)}s"] = vals
+    return out
 
 
 def load_training_data():
@@ -72,7 +133,10 @@ def load_training_data():
     y = probe.apply(
         lambda r: build_label(r["success_or_fail"], r["biomarker_replicate_status"]), axis=1
     )
-    X = build_features(probe, "early_displacement_30s", "biomarker_replicate_status")
+    extra = synthetic_multiwindow_displacement(probe["synthetic_id"])
+    probe = probe.join(extra, on="synthetic_id")
+    X = build_features(probe, "early_displacement_30s", "biomarker_replicate_status",
+                        extra_window_cols=EXTRA_WINDOW_COLS)
     meta = probe[["synthetic_id", "class", "intentionally_divergent"]].copy()
     return X, y, meta
 
@@ -85,7 +149,10 @@ def load_validation_data():
     y = valid.apply(
         lambda r: build_label(r["success_or_fail"], r["displacement_replicate_status"]), axis=1
     )
-    X = build_features(valid, "early_displacement_30s", "displacement_replicate_status")
+    extra = real_multiwindow_displacement(valid["chip_id"])
+    valid = valid.join(extra, on="chip_id")
+    X = build_features(valid, "early_displacement_30s", "displacement_replicate_status",
+                        extra_window_cols=EXTRA_WINDOW_COLS)
     meta = valid[["chip_id"]].copy()
     return X, y, meta, len(holdout_ids)
 
